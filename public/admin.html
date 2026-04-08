@@ -1,1 +1,757 @@
 
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İsdemir Liman Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --bg2: #0a1520;
+    --bg3: #0f1e2e;
+    --card: #0d1928;
+    --border: #1a3050;
+    --accent: #FF9F0A;
+    --accent2: #ff6b35;
+    --blue: #2196f3;
+    --green: #00e676;
+    --red: #ff1744;
+    --text: #e8f4ff;
+    --muted: #4a7090;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(255,159,10,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(33,150,243,0.04) 0%, transparent 50%);
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.1em;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* ── STATS ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.green { color: var(--green); }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* ── BTN ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #ffb733; transform: translateY(-1px); }
+
+  .btn-danger {
+    background: rgba(255,23,68,0.12);
+    color: var(--red);
+    border: 1px solid rgba(255,23,68,0.3);
+  }
+
+  .btn-danger:hover { background: rgba(255,23,68,0.22); }
+
+  .btn-edit {
+    background: rgba(33,150,243,0.12);
+    color: var(--blue);
+    border: 1px solid rgba(33,150,243,0.3);
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .btn-edit:hover { background: rgba(33,150,243,0.22); }
+
+  .btn-sm-danger {
+    background: rgba(255,23,68,0.12);
+    color: var(--red);
+    border: 1px solid rgba(255,23,68,0.3);
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .btn-sm-danger:hover { background: rgba(255,23,68,0.22); }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    background: var(--bg3);
+    padding: 12px 16px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,159,10,0.03); }
+
+  td {
+    padding: 13px 16px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  .ship-name {
+    font-weight: 600;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .badge-green { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+  .badge-orange { background: rgba(255,152,0,0.12); color: #ff9800; border: 1px solid rgba(255,152,0,0.3); }
+  .badge-blue { background: rgba(33,150,243,0.12); color: var(--blue); border: 1px solid rgba(33,150,243,0.3); }
+  .badge-red { background: rgba(255,23,68,0.12); color: var(--red); border: 1px solid rgba(255,23,68,0.3); }
+  .badge-gray { background: rgba(255,255,255,0.06); color: #aaa; border: 1px solid rgba(255,255,255,0.1); }
+
+  .draft-alarm {
+    color: var(--red);
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .actions { display: flex; gap: 8px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    width: 560px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.2s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  input, select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  select option { background: var(--bg3); }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--bg2);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    td:nth-child(3), td:nth-child(4), th:nth-child(3), th:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚓</div>
+    <div>
+      <div class="logo-text">İSDEMİR LİMAN OPS</div>
+      <div class="logo-sub">Admin Kontrol Paneli</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      CANLI
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Gemi Ekle</button>
+  </div>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Toplam Gemi</div>
+      <div class="stat-value" id="stat-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Limanda</div>
+      <div class="stat-value green" id="stat-limanda">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Beklenen</div>
+      <div class="stat-value blue" id="stat-beklenen">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Draft Alarm</div>
+      <div class="stat-value red" id="stat-alarm">0</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section-header">
+    <span class="section-title">Gemi Listesi</span>
+    <button class="btn btn-edit" onclick="loadGemiler()">↻ Yenile</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Gemi Adı</th>
+          <th>Durum</th>
+          <th>Rıhtım</th>
+          <th>Varış</th>
+          <th>Draft</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="gemi-tbody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">🚢 Yeni Gemi Ekle</span>
+    </div>
+    <input type="hidden" id="edit-id">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Gemi Adı</label>
+        <input type="text" id="f-ad" placeholder="MV EXAMPLE">
+      </div>
+      <div class="form-group">
+        <label>IMO Numarası</label>
+        <input type="text" id="f-imo" placeholder="9123456">
+      </div>
+      <div class="form-group">
+        <label>Gemi Tipi</label>
+        <select id="f-tip">
+          <option>Bulk Carrier</option>
+          <option>Ore Carrier</option>
+          <option>General Cargo</option>
+          <option>Tanker</option>
+          <option>Container</option>
+          <option>Diğer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bayrak</label>
+        <input type="text" id="f-bayrak" placeholder="Panama">
+      </div>
+      <div class="form-group">
+        <label>Durum</label>
+        <select id="f-durum">
+          <option>Tahliyede</option>
+          <option>Yüklemede</option>
+          <option>Kalkışa Hazır</option>
+          <option>Bekleniyor</option>
+          <option>Demirledi</option>
+          <option>Geçiş</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Son Liman</label>
+        <input type="text" id="f-sonLiman" placeholder="Novorossiysk">
+      </div>
+      <div class="form-group">
+        <label>Varış Zamanı</label>
+        <input type="text" id="f-varisZamani" placeholder="09.04.2026 14:30">
+      </div>
+      <div class="form-group">
+        <label>Rıhtım</label>
+        <select id="f-rhtim">
+          <option>Rıhtım 1</option>
+          <option>Rıhtım 2</option>
+          <option>Rıhtım 3</option>
+          <option>Rıhtım 4</option>
+          <option>Rıhtım 5</option>
+          <option>Planlanıyor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Arrival Draft (m)</label>
+        <input type="number" id="f-draft" placeholder="13.4" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Departure Draft (m)</label>
+        <input type="number" id="f-departureDraft" placeholder="Boş bırakılabilir" step="0.1">
+      </div>
+      <div class="form-group full">
+        <label>Durum</label>
+        <select id="f-beklenen">
+          <option value="false">Limanda (Aktif)</option>
+          <option value="true">Bekleniyor (Gelecek)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">İptal</button>
+      <button class="btn btn-primary" onclick="saveGemi()">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/isdemir/ships';
+const ALARM_ESIK = 14.2;
+
+let gemilerData = [];
+
+async function loadGemiler() {
+  try {
+    const res = await fetch(API);
+    const data = await res.json();
+    gemilerData = data.gemiler || [];
+    renderTable();
+    renderStats();
+  } catch(e) {
+    showToast('Bağlantı hatası!', true);
+  }
+}
+
+function renderStats() {
+  document.getElementById('stat-total').textContent = gemilerData.length;
+  document.getElementById('stat-limanda').textContent = gemilerData.filter(g => !g.beklenen).length;
+  document.getElementById('stat-beklenen').textContent = gemilerData.filter(g => g.beklenen).length;
+  document.getElementById('stat-alarm').textContent = gemilerData.filter(g => draftAlarm(g)).length;
+}
+
+function draftAlarm(g) {
+  return g.draft >= ALARM_ESIK || (g.departureDraft && g.departureDraft >= ALARM_ESIK);
+}
+
+function durumBadge(durum, beklenen) {
+  if (beklenen) return `<span class="badge badge-blue">${durum}</span>`;
+  if (durum.includes('Yükle')) return `<span class="badge badge-green">${durum}</span>`;
+  if (durum.includes('Tahliye')) return `<span class="badge badge-orange">${durum}</span>`;
+  if (durum.includes('Hazır')) return `<span class="badge badge-gray">${durum}</span>`;
+  return `<span class="badge badge-gray">${durum}</span>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('gemi-tbody');
+  if (!gemilerData.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Henüz gemi eklenmedi</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = gemilerData.map(g => {
+    const alarm = draftAlarm(g);
+    const draftHtml = alarm
+      ? `<span class="draft-alarm">⚠️ ${g.draft}m</span>`
+      : `<span style="font-family:var(--mono);font-size:12px">${g.draft}m</span>`;
+
+    return `
+      <tr>
+        <td>
+          <div class="ship-name">${g.ad}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${g.imo} · ${g.bayrak}</div>
+        </td>
+        <td>${durumBadge(g.durum, g.beklenen)}</td>
+        <td style="font-family:var(--mono);font-size:12px">${g.rhtim}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">${g.varisZamani}</td>
+        <td>${draftHtml}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="editGemi(${g.id})">✏️ Düzenle</button>
+            <button class="btn btn-sm-danger" onclick="deleteGemi(${g.id})">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openModal(clear = true) {
+  if (clear) {
+    document.getElementById('modal-title-text').textContent = '🚢 Yeni Gemi Ekle';
+    document.getElementById('edit-id').value = '';
+    ['ad','imo','bayrak','sonLiman','varisZamani','draft','departureDraft'].forEach(f => {
+      document.getElementById('f-' + f).value = '';
+    });
+    document.getElementById('f-tip').value = 'Bulk Carrier';
+    document.getElementById('f-durum').value = 'Bekleniyor';
+    document.getElementById('f-rhtim').value = 'Planlanıyor';
+    document.getElementById('f-beklenen').value = 'false';
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function editGemi(id) {
+  const g = gemilerData.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('modal-title-text').textContent = '✏️ Gemi Düzenle';
+  document.getElementById('edit-id').value = g.id;
+  document.getElementById('f-ad').value = g.ad;
+  document.getElementById('f-imo').value = g.imo;
+  document.getElementById('f-tip').value = g.tip;
+  document.getElementById('f-bayrak').value = g.bayrak;
+  document.getElementById('f-durum').value = g.durum;
+  document.getElementById('f-sonLiman').value = g.sonLiman;
+  document.getElementById('f-varisZamani').value = g.varisZamani;
+  document.getElementById('f-rhtim').value = g.rhtim;
+  document.getElementById('f-draft').value = g.draft;
+  document.getElementById('f-departureDraft').value = g.departureDraft || '';
+  document.getElementById('f-beklenen').value = g.beklenen ? 'true' : 'false';
+  openModal(false);
+}
+
+async function saveGemi() {
+  const editId = document.getElementById('edit-id').value;
+  const depDraft = document.getElementById('f-departureDraft').value;
+
+  const payload = {
+    ad: document.getElementById('f-ad').value.trim(),
+    imo: document.getElementById('f-imo').value.trim(),
+    tip: document.getElementById('f-tip').value,
+    bayrak: document.getElementById('f-bayrak').value.trim(),
+    durum: document.getElementById('f-durum').value,
+    sonLiman: document.getElementById('f-sonLiman').value.trim(),
+    varisZamani: document.getElementById('f-varisZamani').value.trim(),
+    rhtim: document.getElementById('f-rhtim').value,
+    draft: parseFloat(document.getElementById('f-draft').value) || 0,
+    departureDraft: depDraft ? parseFloat(depDraft) : null,
+    beklenen: document.getElementById('f-beklenen').value === 'true',
+  };
+
+  if (!payload.ad || !payload.imo) {
+    showToast('Gemi adı ve IMO zorunlu!', true);
+    return;
+  }
+
+  try {
+    const url = editId ? `${API}/${editId}` : API;
+    const method = editId ? 'PUT' : 'POST';
+    await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    closeModal();
+    await loadGemiler();
+    showToast(editId ? '✅ Gemi güncellendi' : '✅ Gemi eklendi');
+  } catch(e) {
+    showToast('Kayıt hatası!', true);
+  }
+}
+
+async function deleteGemi(id) {
+  const g = gemilerData.find(x => x.id === id);
+  if (!confirm(`"${g?.ad}" gemisini silmek istediğinize emin misiniz?`)) return;
+  try {
+    await fetch(`${API}/${id}`, { method: 'DELETE' });
+    await loadGemiler();
+    showToast('🗑️ Gemi silindi');
+  } catch(e) {
+    showToast('Silme hatası!', true);
+  }
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// Dışarı tıklayınca modal kapat
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// İlk yükleme
+loadGemiler();
+// Her 30 saniyede otomatik yenile
+setInterval(loadGemiler, 30000);
+</script>
+</body>
+</html>
