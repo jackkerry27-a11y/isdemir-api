@@ -515,24 +515,28 @@
   <!-- KULLANICILAR BÖLÜMÜ -->
   <div class="section-header" style="margin-top:16px">
     <span class="section-title">👥 Kayıtlı Kullanıcılar</span>
-    <button class="btn btn-primary" onclick="loadKullanicilar()">↻ Yenile</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="online-badge" style="font-size:12px;color:#00e676;font-family:var(--mono)">● 0 online</span>
+      <button class="btn btn-primary" onclick="loadKullanicilar()">↻ Yenile</button>
+    </div>
   </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
           <th>#</th>
+          <th>Durum</th>
           <th>Ad Soyad</th>
           <th>Sicil No</th>
           <th>Görev</th>
           <th>İl / İlçe</th>
-          <th>Adres</th>
+          <th>Son Görülme</th>
           <th>Kayıt Tarihi</th>
           <th>İşlem</th>
         </tr>
       </thead>
       <tbody id="kullanici-tbody">
-        <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+        <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
       </tbody>
     </table>
   </div>
@@ -834,7 +838,7 @@ loadKullanicilar();
 // Her 30 saniyede otomatik yenile
 setInterval(loadGemiler, 30000);
 setInterval(loadDuyurular, 30000);
-setInterval(loadKullanicilar, 60000);
+setInterval(loadKullanicilar, 30000);
 
 // ── KULLANICILAR ─────────────────────────────────────
 const KULLANICI_API = '/isdemir/kullanicilar';
@@ -850,18 +854,26 @@ async function loadKullanicilar() {
 function renderKullanicilar(liste) {
   const tbody = document.getElementById('kullanici-tbody');
   if (!liste.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Henüz kayıtlı kullanıcı yok</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px">Henüz kayıtlı kullanıcı yok</td></tr>`;
     return;
   }
+  const onlineCount = liste.filter(k => k.online).length;
+  const badge = document.getElementById('online-badge');
+  if (badge) badge.textContent = `● ${onlineCount} online`;
+
   tbody.innerHTML = liste.map((k, i) => {
     const tarih = k.kayitTarihi ? new Date(k.kayitTarihi).toLocaleDateString('tr-TR') : '-';
+    const onlineBadge = k.online
+      ? `<span class="badge badge-green" style="font-size:10px">● Çevrimiçi</span>`
+      : `<span class="badge badge-gray" style="font-size:10px;background:rgba(255,255,255,0.05);color:#666;border-color:#333">● Çevrimdışı</span>`;
     return `<tr>
       <td style="color:var(--muted);font-size:12px">${i + 1}</td>
+      <td>${onlineBadge}</td>
       <td style="font-weight:600;color:var(--accent)">${k.ad || '-'}</td>
       <td style="font-family:var(--mono);font-size:12px">${k.sicil || '-'}</td>
       <td style="font-size:12px">${k.gorev || '-'}</td>
       <td style="font-size:12px;color:var(--muted)">${k.il || '-'} / ${k.ilce || '-'}</td>
-      <td style="font-size:11px;color:var(--muted)">${k.adres || '-'}</td>
+      <td style="font-size:11px;color:${k.online ? '#00e676' : 'var(--muted)'}">${k.sonGirisStr || '-'}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${tarih}</td>
       <td><button class="btn btn-sm-danger" onclick="deleteKullanici('${k.sicil}')">🗑️</button></td>
     </tr>`;
