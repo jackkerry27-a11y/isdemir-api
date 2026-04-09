@@ -269,8 +269,8 @@ server.listen(PORT, () => {
 // ─── AISStream ENTEGRASYONU ──────────────────────────
 const AIS_API_KEY = '38f5f2a35f24179c5baaf6f010cb1679db7e84c4';
 
-// İskenderun + Doğu Akdeniz geniş alan
-const ISKENDERUN_BBOX = [[[35.0, 34.0], [38.0, 38.0]]];
+// TEST: Tüm dünya - veri geliyor mu diye test
+const ISKENDERUN_BBOX = [[[-90, -180], [90, 180]]];
 
 // AIS'ten gelen gemileri sakla (MMSI bazlı)
 const aisGemiler = new Map(); // mmsi -> gemi bilgisi
