@@ -270,7 +270,8 @@ server.listen(PORT, () => {
 const AIS_API_KEY = '38f5f2a35f24179c5baaf6f010cb1679db7e84c4';
 
 // İskenderun Körfezi koordinatları (bounding box)
-const ISKENDERUN_BBOX = [[36.4, 35.8], [37.1, 36.5]]; // [min_lat, min_lon], [max_lat, max_lon]
+// Format: [[min_lat, min_lon], [max_lat, max_lon]]
+const ISKENDERUN_BBOX = [[36.40, 35.80], [37.10, 36.60]];
 
 // AIS'ten gelen gemileri sakla (MMSI bazlı)
 const aisGemiler = new Map(); // mmsi -> gemi bilgisi
@@ -311,8 +312,8 @@ function aisStreamBaglan() {
     aisWs.on('open', () => {
       console.log('✅ AISStream bağlandı');
       const subscription = {
-        Apikey: AIS_API_KEY,
-        BoundingBoxes: [ISKENDERUN_BBOX],
+        APIKey: AIS_API_KEY,
+        BoundingBoxes: [[[36.40, 35.80], [37.10, 36.60]]],
         FilterMessageTypes: ['PositionReport', 'ShipStaticData']
       };
       aisWs.send(JSON.stringify(subscription));
