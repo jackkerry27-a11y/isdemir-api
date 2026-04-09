@@ -324,6 +324,9 @@ function aisStreamBaglan() {
         const msgType = msg.MessageType;
         const meta = msg.MetaData;
 
+        // Debug log
+        console.log(`📡 AIS mesaj: ${msgType || 'bilinmiyor'} - ${meta?.ShipName || meta?.MMSI || 'isimsiz'}`);
+
         if (!meta) return;
 
         const mmsi = meta.MMSI?.toString();
