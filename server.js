@@ -265,3 +265,151 @@ server.listen(PORT, () => {
   console.log(`🔔 FCM    → Push bildirim aktif`);
   console.log(`🖥️  Admin  → /admin`);
 });
+
+// ─── AISStream ENTEGRASYONU ──────────────────────────
+const AIS_API_KEY = '38f5f2a35f24179c5baaf6f010cb1679db7e84c4';
+
+// İskenderun Körfezi koordinatları (bounding box)
+const ISKENDERUN_BBOX = [[36.4, 35.8], [37.1, 36.5]]; // [min_lat, min_lon], [max_lat, max_lon]
+
+// AIS'ten gelen gemileri sakla (MMSI bazlı)
+const aisGemiler = new Map(); // mmsi -> gemi bilgisi
+
+function aisGemiTipStr(tip) {
+  if (tip >= 70 && tip <= 79) return 'General Cargo';
+  if (tip >= 80 && tip <= 89) return 'Tanker';
+  if (tip >= 60 && tip <= 69) return 'Passenger';
+  if (tip === 30) return 'Fishing';
+  if (tip >= 40 && tip <= 49) return 'High Speed';
+  if (tip >= 20 && tip <= 29) return 'WIG';
+  return 'Bulk Carrier';
+}
+
+function aisNavStatusStr(status) {
+  switch (status) {
+    case 0: return 'Yüklemede';
+    case 1: return 'Demirledi';
+    case 3: return 'Kalkışa Hazır';
+    case 5: return 'Tahliyede';
+    default: return 'Geçiş';
+  }
+}
+
+let aisWs = null;
+let aisReconnectTimer = null;
+
+function aisStreamBaglan() {
+  if (aisWs) {
+    try { aisWs.terminate(); } catch(_) {}
+  }
+
+  console.log('🛰️  AISStream bağlanıyor...');
+
+  try {
+    aisWs = new WebSocket('wss://stream.aisstream.io/v0/stream');
+
+    aisWs.on('open', () => {
+      console.log('✅ AISStream bağlandı');
+      const subscription = {
+        Apikey: AIS_API_KEY,
+        BoundingBoxes: [ISKENDERUN_BBOX],
+        FilterMessageTypes: ['PositionReport', 'ShipStaticData']
+      };
+      aisWs.send(JSON.stringify(subscription));
+    });
+
+    aisWs.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        const msgType = msg.MessageType;
+        const meta = msg.MetaData;
+
+        if (!meta) return;
+
+        const mmsi = meta.MMSI?.toString();
+        if (!mmsi) return;
+
+        // Mevcut kaydı güncelle veya yeni oluştur
+        const mevcut = aisGemiler.get(mmsi) || {};
+
+        if (msgType === 'PositionReport') {
+          const pos = msg.Message?.PositionReport;
+          if (!pos) return;
+
+          aisGemiler.set(mmsi, {
+            ...mevcut,
+            mmsi,
+            ad: meta.ShipName?.trim() || mevcut.ad || `MMSI:${mmsi}`,
+            lat: pos.Latitude,
+            lon: pos.Longitude,
+            hiz: pos.Sog?.toFixed(1) || '0',
+            yon: pos.Cog?.toFixed(0) || '0',
+            navStatus: aisNavStatusStr(pos.NavigationalStatus),
+            draft: pos.Draught ? pos.Draught / 10 : (mevcut.draft || 0),
+            guncelleme: new Date().toISOString(),
+          });
+
+        } else if (msgType === 'ShipStaticData') {
+          const s = msg.Message?.ShipStaticData;
+          if (!s) return;
+
+          aisGemiler.set(mmsi, {
+            ...mevcut,
+            mmsi,
+            ad: s.Name?.trim() || mevcut.ad || `MMSI:${mmsi}`,
+            imo: s.ImoNumber ? `IMO${s.ImoNumber}` : (mevcut.imo || '-'),
+            tip: aisGemiTipStr(s.Type || 0),
+            bayrak: s.Flag || mevcut.bayrak || '-',
+            varisLiman: s.Destination?.trim() || mevcut.varisLiman || '-',
+            draft: s.MaximumStaticDraught ? s.MaximumStaticDraught / 10 : (mevcut.draft || 0),
+            uzunluk: s.Dimension?.A + s.Dimension?.B || 0,
+            genislik: s.Dimension?.C + s.Dimension?.D || 0,
+            guncelleme: new Date().toISOString(),
+          });
+        }
+
+        // AIS gemilerini tüm bağlı kullanıcılara yayınla (30 saniyede bir)
+      } catch (e) {
+        console.error('AIS mesaj parse hatası:', e.message);
+      }
+    });
+
+    aisWs.on('close', () => {
+      console.log('⚠️  AISStream bağlantısı kesildi, 10sn sonra tekrar...');
+      aisReconnectTimer = setTimeout(aisStreamBaglan, 10000);
+    });
+
+    aisWs.on('error', (err) => {
+      console.error('AISStream hata:', err.message);
+    });
+
+  } catch (e) {
+    console.error('AISStream bağlantı hatası:', e.message);
+    aisReconnectTimer = setTimeout(aisStreamBaglan, 10000);
+  }
+}
+
+// AIS verisi API endpoint
+app.get('/isdemir/ais', (req, res) => {
+  const list = Array.from(aisGemiler.values());
+  res.json({ gemiler: list, toplam: list.length });
+});
+
+// Belirli MMSI için AIS detay
+app.get('/isdemir/ais/:mmsi', (req, res) => {
+  const g = aisGemiler.get(req.params.mmsi);
+  if (!g) return res.status(404).json({ hata: 'Gemi bulunamadı' });
+  res.json(g);
+});
+
+// 30 saniyede bir AIS güncellemesini broadcast et
+setInterval(() => {
+  const list = Array.from(aisGemiler.values());
+  if (list.length > 0) {
+    broadcast({ type: 'ais_guncelleme', gemiler: list });
+  }
+}, 30000);
+
+// Başlat
+aisStreamBaglan();
+console.log('🛰️  AISStream servisi başlatıldı - İskenderun Körfezi izleniyor');
