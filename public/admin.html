@@ -512,7 +512,30 @@
     </table>
   </div>
 
-<!-- Duyuru Modal -->
+  <!-- KULLANICILAR BÖLÜMÜ -->
+  <div class="section-header" style="margin-top:16px">
+    <span class="section-title">👥 Kayıtlı Kullanıcılar</span>
+    <button class="btn btn-primary" onclick="loadKullanicilar()">↻ Yenile</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ad Soyad</th>
+          <th>Sicil No</th>
+          <th>Görev</th>
+          <th>İl / İlçe</th>
+          <th>Adres</th>
+          <th>Kayıt Tarihi</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="kullanici-tbody">
+        <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
 <div class="modal-overlay" id="duyuru-modal">
   <div class="modal">
     <div class="modal-title">📢 Yeni Duyuru Yayınla</div>
@@ -807,9 +830,52 @@ document.getElementById('modal').addEventListener('click', function(e) {
 // İlk yükleme
 loadGemiler();
 loadDuyurular();
+loadKullanicilar();
 // Her 30 saniyede otomatik yenile
 setInterval(loadGemiler, 30000);
 setInterval(loadDuyurular, 30000);
+setInterval(loadKullanicilar, 60000);
+
+// ── KULLANICILAR ─────────────────────────────────────
+const KULLANICI_API = '/isdemir/kullanicilar';
+
+async function loadKullanicilar() {
+  try {
+    const res = await fetch(KULLANICI_API);
+    const data = await res.json();
+    renderKullanicilar(data.kullanicilar || []);
+  } catch(e) {}
+}
+
+function renderKullanicilar(liste) {
+  const tbody = document.getElementById('kullanici-tbody');
+  if (!liste.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Henüz kayıtlı kullanıcı yok</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = liste.map((k, i) => {
+    const tarih = k.kayitTarihi ? new Date(k.kayitTarihi).toLocaleDateString('tr-TR') : '-';
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px">${i + 1}</td>
+      <td style="font-weight:600;color:var(--accent)">${k.ad || '-'}</td>
+      <td style="font-family:var(--mono);font-size:12px">${k.sicil || '-'}</td>
+      <td style="font-size:12px">${k.gorev || '-'}</td>
+      <td style="font-size:12px;color:var(--muted)">${k.il || '-'} / ${k.ilce || '-'}</td>
+      <td style="font-size:11px;color:var(--muted)">${k.adres || '-'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${tarih}</td>
+      <td><button class="btn btn-sm-danger" onclick="deleteKullanici('${k.sicil}')">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteKullanici(sicil) {
+  if (!confirm(`${sicil} sicilli kullanıcıyı silmek istiyor musunuz?`)) return;
+  try {
+    await fetch(`${KULLANICI_API}/${sicil}`, { method: 'DELETE' });
+    await loadKullanicilar();
+    showToast('🗑️ Kullanıcı silindi');
+  } catch(e) { showToast('Hata!', true); }
+}
 
 // ── DUYURU ──────────────────────────────────────────
 const DUYURU_API = '/isdemir/duyurular';
