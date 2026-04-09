@@ -196,6 +196,8 @@ async function gemiEklendiBldirim(gemiAdi) {
 }
 
 // ─── GEMİ API ────────────────────────────────────────
+app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
 app.get('/isdemir/ships', (req, res) => res.json({ gemiler }));
 
 // ─── KULLANICI KAYIT API ─────────────────────────────
