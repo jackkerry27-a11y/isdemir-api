@@ -202,12 +202,28 @@ app.get('/isdemir/ships', (req, res) => res.json({ gemiler }));
 let kullanicilar = [];
 
 app.get('/isdemir/kullanicilar', (req, res) => {
-  res.json({ kullanicilar, toplam: kullanicilar.length });
+  const liste = kullanicilar.map(k => ({
+    ...k,
+    online: onlineKullanicilar.has(k.sicil),
+    sonGiris: sonGorulenler.get(k.sicil) || null,
+    sonGirisStr: (() => {
+      const ts = sonGorulenler.get(k.sicil);
+      if (!ts) return 'Hiç giriş yapmadı';
+      const fark = Date.now() - ts;
+      const dk = Math.floor(fark / 60000);
+      const saat = Math.floor(fark / 3600000);
+      const gun = Math.floor(fark / 86400000);
+      if (dk < 1) return 'Az önce';
+      if (dk < 60) return `${dk} dk önce`;
+      if (saat < 24) return `${saat} saat önce`;
+      return `${gun} gün önce`;
+    })(),
+  }));
+  res.json({ kullanicilar: liste, toplam: liste.length, online: liste.filter(k => k.online).length });
 });
 
 app.post('/isdemir/kullanicilar', (req, res) => {
   const { sicil } = req.body;
-  // Aynı sicil varsa güncelle, yoksa ekle
   const idx = kullanicilar.findIndex(k => k.sicil === sicil);
   if (idx >= 0) {
     kullanicilar[idx] = { ...kullanicilar[idx], ...req.body, guncelleme: new Date().toISOString() };
