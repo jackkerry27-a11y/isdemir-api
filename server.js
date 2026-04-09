@@ -267,7 +267,7 @@ server.listen(PORT, () => {
 });
 
 // ─── AISStream ENTEGRASYONU ──────────────────────────
-const AIS_API_KEY = '38f5f2a35f24179c5baaf6f010cb1679db7e84c4';
+const AIS_API_KEY = '80e2ab57d7c2da4cb75e73e310aded52e3e5a85d';
 
 // TEST: Tüm dünya - veri geliyor mu diye test
 const ISKENDERUN_BBOX = [[[-90, -180], [90, 180]]];
