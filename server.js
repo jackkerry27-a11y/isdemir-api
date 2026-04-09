@@ -198,6 +198,33 @@ async function gemiEklendiBldirim(gemiAdi) {
 // ─── GEMİ API ────────────────────────────────────────
 app.get('/isdemir/ships', (req, res) => res.json({ gemiler }));
 
+// ─── DUYURU API ──────────────────────────────────────
+let duyurular = [];
+let nextDuyuruId = 1;
+
+app.get('/isdemir/duyurular', (req, res) => res.json({ duyurular }));
+
+app.post('/isdemir/duyurular', async (req, res) => {
+  const d = { ...req.body, id: nextDuyuruId++, tarih: new Date().toISOString() };
+  duyurular.unshift(d); // en yenisi başa
+  if (duyurular.length > 50) duyurular = duyurular.slice(0, 50);
+  res.status(201).json(d);
+  // Tüm kullanıcılara push bildirim
+  for (const [sicil, token] of fcmTokenlari) {
+    if (!onlineKullanicilar.has(sicil)) {
+      await pushBildirimGonder(token, `📢 ${d.baslik}`, d.icerik?.substring(0, 80) || '');
+    }
+  }
+  // Çevrimiçilere WS ile bildir
+  broadcast({ type: 'yeni_duyuru', duyuru: d });
+});
+
+app.delete('/isdemir/duyurular/:id', (req, res) => {
+  duyurular = duyurular.filter(d => d.id !== parseInt(req.params.id));
+  broadcast({ type: 'duyuru_silindi' });
+  res.json({ ok: true });
+});
+
 app.post('/isdemir/ships', async (req, res) => {
   const g = { ...req.body, id: nextGemiId++ };
   gemiler.push(g);
