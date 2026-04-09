@@ -198,7 +198,29 @@ async function gemiEklendiBldirim(gemiAdi) {
 // ─── GEMİ API ────────────────────────────────────────
 app.get('/isdemir/ships', (req, res) => res.json({ gemiler }));
 
-// ─── DUYURU API ──────────────────────────────────────
+// ─── KULLANICI KAYIT API ─────────────────────────────
+let kullanicilar = [];
+
+app.get('/isdemir/kullanicilar', (req, res) => {
+  res.json({ kullanicilar, toplam: kullanicilar.length });
+});
+
+app.post('/isdemir/kullanicilar', (req, res) => {
+  const { sicil } = req.body;
+  // Aynı sicil varsa güncelle, yoksa ekle
+  const idx = kullanicilar.findIndex(k => k.sicil === sicil);
+  if (idx >= 0) {
+    kullanicilar[idx] = { ...kullanicilar[idx], ...req.body, guncelleme: new Date().toISOString() };
+  } else {
+    kullanicilar.push({ ...req.body, id: kullanicilar.length + 1 });
+  }
+  res.status(201).json({ ok: true });
+});
+
+app.delete('/isdemir/kullanicilar/:sicil', (req, res) => {
+  kullanicilar = kullanicilar.filter(k => k.sicil !== req.params.sicil);
+  res.json({ ok: true });
+});
 let duyurular = [];
 let nextDuyuruId = 1;
 
