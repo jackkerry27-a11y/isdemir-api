@@ -487,7 +487,63 @@
       </tbody>
     </table>
   </div>
-</main>
+
+  <!-- DUYURU BÖLÜMÜ -->
+  <div class="section-header" style="margin-top:16px">
+    <span class="section-title">📢 Duyuru Panosu</span>
+    <button class="btn btn-primary" onclick="openDuyuruModal()">+ Duyuru Yayınla</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Başlık</th>
+          <th>Öncelik</th>
+          <th>İçerik</th>
+          <th>Yazar</th>
+          <th>Tarih</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="duyuru-tbody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+<!-- Duyuru Modal -->
+<div class="modal-overlay" id="duyuru-modal">
+  <div class="modal">
+    <div class="modal-title">📢 Yeni Duyuru Yayınla</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Başlık</label>
+        <input type="text" id="d-baslik" placeholder="Duyuru başlığı...">
+      </div>
+      <div class="form-group full">
+        <label>İçerik</label>
+        <textarea id="d-icerik" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:100px" placeholder="Duyuru içeriği..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Öncelik</label>
+        <select id="d-oncelik">
+          <option value="normal">Normal 🟢</option>
+          <option value="onemli">Önemli 🟡</option>
+          <option value="kritik">Kritik 🔴</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Yazar</label>
+        <input type="text" id="d-yazar" placeholder="Admin">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDuyuruModal()">İptal</button>
+      <button class="btn btn-primary" onclick="saveDuyuru()">📢 Yayınla</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal -->
 <div class="modal-overlay" id="modal">
@@ -750,8 +806,94 @@ document.getElementById('modal').addEventListener('click', function(e) {
 
 // İlk yükleme
 loadGemiler();
+loadDuyurular();
 // Her 30 saniyede otomatik yenile
 setInterval(loadGemiler, 30000);
+setInterval(loadDuyurular, 30000);
+
+// ── DUYURU ──────────────────────────────────────────
+const DUYURU_API = '/isdemir/duyurular';
+let duyurularData = [];
+
+async function loadDuyurular() {
+  try {
+    const res = await fetch(DUYURU_API);
+    const data = await res.json();
+    duyurularData = data.duyurular || [];
+    renderDuyurular();
+  } catch(e) {}
+}
+
+function renderDuyurular() {
+  const tbody = document.getElementById('duyuru-tbody');
+  if (!duyurularData.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Henüz duyuru yok</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = duyurularData.map(d => {
+    const oncelikBadge = d.oncelik === 'kritik'
+      ? `<span class="badge badge-red">KRİTİK</span>`
+      : d.oncelik === 'onemli'
+      ? `<span class="badge badge-orange">ÖNEMLİ</span>`
+      : `<span class="badge badge-green">NORMAL</span>`;
+    const tarih = d.tarih ? new Date(d.tarih).toLocaleString('tr-TR') : '-';
+    const icerikKisa = d.icerik?.length > 60 ? d.icerik.substring(0, 60) + '...' : d.icerik;
+    return `<tr>
+      <td style="font-weight:600;color:var(--accent)">${d.baslik}</td>
+      <td>${oncelikBadge}</td>
+      <td style="font-size:12px;color:var(--muted)">${icerikKisa}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.yazar || 'Admin'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${tarih}</td>
+      <td><button class="btn btn-sm-danger" onclick="deleteDuyuru(${d.id})">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openDuyuruModal() {
+  document.getElementById('d-baslik').value = '';
+  document.getElementById('d-icerik').value = '';
+  document.getElementById('d-oncelik').value = 'normal';
+  document.getElementById('d-yazar').value = 'Admin';
+  document.getElementById('duyuru-modal').classList.add('open');
+}
+
+function closeDuyuruModal() {
+  document.getElementById('duyuru-modal').classList.remove('open');
+}
+
+async function saveDuyuru() {
+  const baslik = document.getElementById('d-baslik').value.trim();
+  const icerik = document.getElementById('d-icerik').value.trim();
+  if (!baslik || !icerik) { showToast('Başlık ve içerik zorunlu!', true); return; }
+  try {
+    await fetch(DUYURU_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        baslik,
+        icerik,
+        oncelik: document.getElementById('d-oncelik').value,
+        yazar: document.getElementById('d-yazar').value || 'Admin',
+      }),
+    });
+    closeDuyuruModal();
+    await loadDuyurular();
+    showToast('📢 Duyuru yayınlandı!');
+  } catch(e) { showToast('Hata!', true); }
+}
+
+async function deleteDuyuru(id) {
+  if (!confirm('Bu duyuruyu silmek istiyor musunuz?')) return;
+  try {
+    await fetch(`${DUYURU_API}/${id}`, { method: 'DELETE' });
+    await loadDuyurular();
+    showToast('🗑️ Duyuru silindi');
+  } catch(e) { showToast('Hata!', true); }
+}
+
+document.getElementById('duyuru-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDuyuruModal();
+});
 </script>
 </body>
 </html>
