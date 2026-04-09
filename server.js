@@ -309,13 +309,16 @@ function aisStreamBaglan() {
     aisWs = new WebSocket('wss://stream.aisstream.io/v0/stream');
 
     aisWs.on('open', () => {
-      console.log('✅ AISStream bağlandı');
+      console.log('✅ AISStream bağlandı - subscription gönderiliyor...');
       const subscription = {
         APIKey: AIS_API_KEY,
         BoundingBoxes: ISKENDERUN_BBOX,
         FilterMessageTypes: ['PositionReport', 'ShipStaticData']
       };
-      aisWs.send(JSON.stringify(subscription));
+      const msg = JSON.stringify(subscription);
+      console.log('📤 Subscription:', msg);
+      aisWs.send(msg);
+      console.log('✅ Subscription gönderildi');
     });
 
     aisWs.on('message', (data) => {
