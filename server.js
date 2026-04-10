@@ -220,6 +220,11 @@ app.get('/isdemir/kullanicilar', (req, res) => {
       if (saat < 24) return `${saat} saat önce`;
       return `${gun} gün önce`;
     })(),
+    // Ban bilgileri
+    banli: k.banli || false,
+    banSebep: k.banSebep || null,
+    banTarihi: k.banTarihi || null,
+    cihazId: k.cihazId || null,
   }));
   res.json({ kullanicilar: liste, toplam: liste.length, online: liste.filter(k => k.online).length });
 });
@@ -239,6 +244,174 @@ app.delete('/isdemir/kullanicilar/:sicil', (req, res) => {
   kullanicilar = kullanicilar.filter(k => k.sicil !== req.params.sicil);
   res.json({ ok: true });
 });
+
+// ═══════════════════════════════════════════════════════
+// BAN SİSTEMİ API'LERİ
+// ═══════════════════════════════════════════════════════
+
+// 1. Ban Kontrolü - Mobil uygulama her açılışta çağırır
+app.get('/isdemir/ban-kontrol', (req, res) => {
+  try {
+    const { sicil, cihazId } = req.query;
+    
+    if (!sicil) {
+      return res.json({ banli: false, sebep: '', banTarihi: '' });
+    }
+
+    // Kullanıcıyı bul
+    const kullanici = kullanicilar.find(k => k.sicil === sicil);
+
+    if (!kullanici) {
+      return res.json({ banli: false, sebep: '', banTarihi: '' });
+    }
+
+    // Ban kontrolü
+    if (kullanici.banli === true) {
+      console.log(`🚫 Ban kontrol: ${sicil} BANLI - Sebep: ${kullanici.banSebep}`);
+      return res.json({
+        banli: true,
+        sebep: kullanici.banSebep || 'Yetkisiz erişim tespit edildi',
+        banTarihi: kullanici.banTarihi || new Date().toISOString()
+      });
+    }
+
+    // Ban yok
+    console.log(`✓ Ban kontrol: ${sicil} temiz`);
+    res.json({ banli: false, sebep: '', banTarihi: '' });
+    
+  } catch (error) {
+    console.error('Ban kontrol hatası:', error);
+    res.json({ banli: false, sebep: '', banTarihi: '' });
+  }
+});
+
+// 2. Kullanıcı Banlama - Admin panelden çağrılır
+app.post('/isdemir/kullanici-banla', (req, res) => {
+  try {
+    const { sicil, sebep, banTarihi } = req.body;
+    
+    if (!sicil || !sebep) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Sicil ve sebep zorunlu' 
+      });
+    }
+
+    // Kullanıcıyı bul ve banla
+    const kullaniciIdx = kullanicilar.findIndex(k => k.sicil === sicil);
+    
+    if (kullaniciIdx !== -1) {
+      kullanicilar[kullaniciIdx].banli = true;
+      kullanicilar[kullaniciIdx].banSebep = sebep;
+      kullanicilar[kullaniciIdx].banTarihi = banTarihi || new Date().toISOString();
+      
+      console.log(`✅ KULLANICI BANLANDI: ${sicil} (${kullanicilar[kullaniciIdx].ad})`);
+      console.log(`   Sebep: ${sebep}`);
+      console.log(`   Tarih: ${kullanicilar[kullaniciIdx].banTarihi}`);
+      
+      // Eğer kullanıcı online ise bağlantısını kes
+      if (onlineKullanicilar.has(sicil)) {
+        const user = onlineKullanicilar.get(sicil);
+        if (user.ws && user.ws.readyState === WebSocket.OPEN) {
+          user.ws.send(JSON.stringify({ 
+            type: 'banlandınız', 
+            sebep: sebep 
+          }));
+          user.ws.close();
+        }
+        onlineKullanicilar.delete(sicil);
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Kullanıcı banlandı' 
+    });
+    
+  } catch (error) {
+    console.error('Banlama hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Banlama sırasında hata oluştu' 
+    });
+  }
+});
+
+// 3. Ban Kaldırma - Admin panelden çağrılır
+app.post('/isdemir/ban-kaldir', (req, res) => {
+  try {
+    const { sicil } = req.body;
+    
+    if (!sicil) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Sicil zorunlu' 
+      });
+    }
+
+    // Kullanıcının banını kaldır
+    const kullaniciIdx = kullanicilar.findIndex(k => k.sicil === sicil);
+    
+    if (kullaniciIdx !== -1) {
+      kullanicilar[kullaniciIdx].banli = false;
+      kullanicilar[kullaniciIdx].banSebep = null;
+      kullanicilar[kullaniciIdx].banTarihi = null;
+      
+      console.log(`✅ BAN KALDIRILDI: ${sicil} (${kullanicilar[kullaniciIdx].ad})`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Ban kaldırıldı' 
+    });
+    
+  } catch (error) {
+    console.error('Ban kaldırma hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ban kaldırma sırasında hata oluştu' 
+    });
+  }
+});
+
+// 4. Cihaz Kaydı - Mobil uygulama ilk kayıtta çağırır
+app.post('/isdemir/cihaz-kayit', (req, res) => {
+  try {
+    const { sicil, ad, gorev, cihazId, platform, kayitTarihi } = req.body;
+    
+    if (!sicil || !cihazId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Sicil ve cihazId zorunlu' 
+      });
+    }
+
+    // Kullanıcının cihaz bilgisini güncelle
+    const kullaniciIdx = kullanicilar.findIndex(k => k.sicil === sicil);
+    
+    if (kullaniciIdx !== -1) {
+      kullanicilar[kullaniciIdx].cihazId = cihazId;
+      kullanicilar[kullaniciIdx].platform = platform || 'unknown';
+      
+      console.log(`✅ Cihaz kaydedildi: ${sicil} - ${cihazId}`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Cihaz kaydedildi' 
+    });
+    
+  } catch (error) {
+    console.error('Cihaz kayıt hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Cihaz kaydı sırasında hata oluştu' 
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+
 let duyurular = [];
 let nextDuyuruId = 1;
 
