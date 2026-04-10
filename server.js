@@ -411,6 +411,53 @@ app.post('/isdemir/cihaz-kayit', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════
+// PUSH BİLDİRİM API'Sİ - Admin panelden çağrılır
+// ═══════════════════════════════════════════════════════
+app.post('/isdemir/push-bildirim', async (req, res) => {
+  try {
+    const { baslik, mesaj } = req.body;
+    
+    if (!baslik || !mesaj) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Başlık ve mesaj zorunlu' 
+      });
+    }
+
+    let gonderilen = 0;
+    
+    // Tüm kayıtlı FCM tokenlarına bildirim gönder
+    for (const [sicil, fcmToken] of fcmTokenlari) {
+      try {
+        await pushBildirimGonder(fcmToken, baslik, mesaj);
+        gonderilen++;
+        console.log(`📱 Push gönderildi: ${sicil}`);
+      } catch (e) {
+        console.error(`Push hatası (${sicil}):`, e.message);
+      }
+    }
+
+    console.log(`📢 TOPLU BİLDİRİM GÖNDERİLDİ:`);
+    console.log(`   Başlık: ${baslik}`);
+    console.log(`   Mesaj: ${mesaj}`);
+    console.log(`   Gönderilen: ${gonderilen} kullanıcı`);
+
+    res.json({ 
+      success: true, 
+      message: 'Bildirimler gönderildi',
+      gonderilen: gonderilen
+    });
+    
+  } catch (error) {
+    console.error('Push bildirim hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Bildirim gönderme hatası' 
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
 
 let duyurular = [];
 let nextDuyuruId = 1;
