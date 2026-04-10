@@ -439,6 +439,7 @@
       <div class="live-dot"></div>
       CANLI
     </div>
+    <button class="btn" style="background:rgba(255,152,0,0.1);border-color:rgba(255,152,0,0.3);color:#ff9800" onclick="openBildirimModal()">📢 Bildirim Gönder</button>
     <button class="btn btn-primary" onclick="openModal()">+ Gemi Ekle</button>
   </div>
 </header>
@@ -540,6 +541,47 @@
         <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- BİLDİRİM MODAL -->
+<div class="modal-overlay" id="bildirim-modal">
+  <div class="modal">
+    <div class="modal-title" style="color:#ff9800">📢 Push Bildirim Gönder</div>
+    <div style="background:rgba(255,152,0,0.05);border:1px solid rgba(255,152,0,0.2);border-radius:8px;padding:16px;margin-bottom:20px">
+      <div style="font-size:13px;color:var(--text)">
+        <strong>Tüm kullanıcılara</strong> telefon bildirimi gönderilecek!
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        Bildirim telefonların üst kısmında görünecek 📱
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Bildirim Başlığı <span style="color:#ff9800">*</span></label>
+        <input type="text" id="push-baslik" placeholder="Örn: Acil Duyuru" maxlength="50" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-size:14px;width:100%">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Maksimum 50 karakter</div>
+      </div>
+      <div class="form-group full">
+        <label>Bildirim Mesajı <span style="color:#ff9800">*</span></label>
+        <textarea id="push-mesaj" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:100px" placeholder="Örn: Yarın saat 14:00'de toplantı var, herkes katılsın!" maxlength="200"></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Maksimum 200 karakter</div>
+      </div>
+    </div>
+    
+    <!-- Önizleme -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📱 Bildirim Önizlemesi:</div>
+      <div style="background:var(--card);border-radius:8px;padding:12px;border-left:3px solid #ff9800">
+        <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px" id="preview-baslik">İSDEMİR OPS</div>
+        <div style="font-size:12px;color:var(--muted)" id="preview-mesaj">Bildirim mesajınız burada görünecek...</div>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeBildirimModal()">İptal</button>
+      <button class="btn" style="background:#ff9800;color:#000;padding:10px 24px;font-size:14px;font-weight:700" onclick="pushGonder()">📢 Gönder</button>
+    </div>
   </div>
 </div>
 
@@ -1095,6 +1137,81 @@ async function banKaldir(sicil, ad) {
 
 document.getElementById('duyuru-modal').addEventListener('click', function(e) {
   if (e.target === this) closeDuyuruModal();
+});
+
+document.getElementById('ban-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeBanModal();
+});
+
+// ── PUSH BİLDİRİM SİSTEMİ ───────────────────────────
+function openBildirimModal() {
+  document.getElementById('push-baslik').value = '';
+  document.getElementById('push-mesaj').value = '';
+  document.getElementById('preview-baslik').textContent = 'İSDEMİR OPS';
+  document.getElementById('preview-mesaj').textContent = 'Bildirim mesajınız burada görünecek...';
+  document.getElementById('bildirim-modal').classList.add('open');
+}
+
+function closeBildirimModal() {
+  document.getElementById('bildirim-modal').classList.remove('open');
+}
+
+// Canlı önizleme
+document.addEventListener('DOMContentLoaded', () => {
+  const baslikInput = document.getElementById('push-baslik');
+  const mesajInput = document.getElementById('push-mesaj');
+  const previewBaslik = document.getElementById('preview-baslik');
+  const previewMesaj = document.getElementById('preview-mesaj');
+  
+  if (baslikInput) {
+    baslikInput.addEventListener('input', (e) => {
+      previewBaslik.textContent = e.target.value || 'İSDEMİR OPS';
+    });
+  }
+  
+  if (mesajInput) {
+    mesajInput.addEventListener('input', (e) => {
+      previewMesaj.textContent = e.target.value || 'Bildirim mesajınız burada görünecek...';
+    });
+  }
+});
+
+async function pushGonder() {
+  const baslik = document.getElementById('push-baslik').value.trim();
+  const mesaj = document.getElementById('push-mesaj').value.trim();
+  
+  if (!baslik || !mesaj) {
+    showToast('Başlık ve mesaj zorunlu!', true);
+    return;
+  }
+  
+  if (!confirm(`Tüm kullanıcılara bildirim gönderilecek!\n\nBaşlık: ${baslik}\nMesaj: ${mesaj}\n\nOnaylıyor musunuz?`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch('/isdemir/push-bildirim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baslik, mesaj })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      closeBildirimModal();
+      showToast(`📢 ${data.gonderilen} kullanıcıya bildirim gönderildi!`);
+    } else {
+      showToast('Bildirim gönderilemedi!', true);
+    }
+  } catch (e) {
+    console.error('Push bildirim hatası:', e);
+    showToast('Bildirim gönderme hatası!', true);
+  }
+}
+
+document.getElementById('bildirim-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeBildirimModal();
 });
 
 document.getElementById('ban-modal').addEventListener('click', function(e) {
