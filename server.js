@@ -3,6 +3,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { GoogleAuth } = require('google-auth-library');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,9 +12,33 @@ const wss = new WebSocket.Server({ server });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── VERİ ────────────────────────────────────────────
-let gemiler = [];
-let nextGemiId = 1;
+// ═══════════════════════════════════════════════════════
+// MONGODB BAĞLANTISI
+// ═══════════════════════════════════════════════════════
+const MONGODB_URI = 'mongodb+srv://jackkerry27_db_user:veVLqCpft0yoibdw@isdemir-db.vmhwinj.mongodb.net/?appName=isdemir-db';
+const mongoClient = new MongoClient(MONGODB_URI);
+let db;
+
+async function connectDB() {
+  try {
+    await mongoClient.connect();
+    db = mongoClient.db('isdemir');
+    console.log('✅ MongoDB bağlandı!');
+    
+    // İndeksler oluştur
+    await db.collection('gemiler').createIndex({ imo: 1 });
+    await db.collection('kullanicilar').createIndex({ sicil: 1 });
+    await db.collection('duyurular').createIndex({ tarih: -1 });
+  } catch (error) {
+    console.error('❌ MongoDB hatası:', error);
+    process.exit(1);
+  }
+}
+
+// Başlangıçta bağlan
+connectDB();
+
+// ─── VERİ (GEÇİCİ - WebSocket için RAM'de) ──────────
 let mesajlar = [];
 let nextMesajId = 1;
 
@@ -52,7 +77,6 @@ async function pushBildirimGonder(fcmToken, baslik, mesaj) {
     const accessToken = await getFCMToken();
     if (!accessToken) return;
 
-    // Project ID'yi serviceAccount.json'dan oku
     const sa = require('./serviceAccount.json');
     const projectId = sa.project_id;
 
@@ -87,13 +111,12 @@ async function pushBildirimGonder(fcmToken, baslik, mesaj) {
 wss.on('connection', (ws) => {
   let benimSicil = null;
 
-  ws.on('message', (raw) => {
+  ws.on('message', async (raw) => {
     try {
       const msg = JSON.parse(raw);
 
       if (msg.type === 'giris') {
         benimSicil = msg.sicil;
-        // FCM token kaydet
         if (msg.fcmToken) fcmTokenlari.set(benimSicil, msg.fcmToken);
         onlineKullanicilar.set(benimSicil, {
           sicil: benimSicil, ad: msg.ad || benimSicil,
@@ -102,7 +125,6 @@ wss.on('connection', (ws) => {
         });
         sonGorulenler.set(benimSicil, Date.now());
         broadcast({ type: 'online_liste', liste: getOnlineListe() });
-        // Bekleyen mesajları gönder
         const bekleyenler = mesajlar.filter(m => m.toSicil === benimSicil && !m.okundu);
         if (bekleyenler.length > 0) ws.send(JSON.stringify({ type: 'bekleyen_mesajlar', mesajlar: bekleyenler }));
         return;
@@ -131,7 +153,6 @@ wss.on('connection', (ws) => {
           alici.ws.send(JSON.stringify({ type: 'yeni_mesaj', mesaj: yeniMesaj }));
           yeniMesaj.okundu = true;
         } else {
-          // Alıcı çevrimdışı — push bildirim gönder
           const aliciFcmToken = fcmTokenlari.get(msg.toSicil);
           if (aliciFcmToken) {
             const mesajMetni = msg.imageBase64 ? '📷 Fotoğraf gönderdi' : (msg.text || '');
@@ -157,6 +178,12 @@ wss.on('connection', (ws) => {
         return;
       }
 
+      if (msg.type === 'profil_sor') {
+        const profil = await db.collection('kullanicilar').findOne({ sicil: msg.sicil });
+        ws.send(JSON.stringify({ type: 'profil_bilgisi', sicil: msg.sicil, profil: profil || {} }));
+        return;
+      }
+
     } catch (e) { console.error('WS hata:', e.message); }
   });
 
@@ -165,7 +192,6 @@ wss.on('connection', (ws) => {
       sonGorulenler.set(benimSicil, Date.now());
       onlineKullanicilar.delete(benimSicil);
       broadcast({ type: 'online_liste', liste: getOnlineListe() });
-      // Son görülme bilgisini yayınla
       broadcast({ type: 'son_gorulen', sicil: benimSicil, timestamp: Date.now() });
     }
   });
@@ -184,88 +210,104 @@ function broadcast(data) {
 
 // ─── GEMİ BİLDİRİM ───────────────────────────────────
 async function gemiEklendiBldirim(gemiAdi) {
-  // Tüm kayıtlı FCM tokenlarına bildirim gönder
   for (const [sicil, token] of fcmTokenlari) {
     if (!onlineKullanicilar.has(sicil)) {
-      // Sadece çevrimdışı olanlara gönder (çevrimiçiler zaten WS'den görür)
       await pushBildirimGonder(token, '🚢 Yeni Gemi', `${gemiAdi} limana eklendi`);
     }
   }
-  // Çevrimiçilere WS ile bildir
+  const gemiler = await db.collection('gemiler').find().toArray();
   broadcast({ type: 'gemi_guncellendi', gemiler });
 }
 
-// ─── GEMİ API ────────────────────────────────────────
+// ─── API ENDPOİNTLERİ ───────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
-app.get('/isdemir/ships', (req, res) => res.json({ gemiler }));
-
-// ─── KULLANICI KAYIT API ─────────────────────────────
-let kullanicilar = [];
-
-app.get('/isdemir/kullanicilar', (req, res) => {
-  const liste = kullanicilar.map(k => ({
-    ...k,
-    online: onlineKullanicilar.has(k.sicil),
-    sonGiris: sonGorulenler.get(k.sicil) || null,
-    sonGirisStr: (() => {
-      const ts = sonGorulenler.get(k.sicil);
-      if (!ts) return 'Hiç giriş yapmadı';
-      const fark = Date.now() - ts;
-      const dk = Math.floor(fark / 60000);
-      const saat = Math.floor(fark / 3600000);
-      const gun = Math.floor(fark / 86400000);
-      if (dk < 1) return 'Az önce';
-      if (dk < 60) return `${dk} dk önce`;
-      if (saat < 24) return `${saat} saat önce`;
-      return `${gun} gün önce`;
-    })(),
-    // Ban bilgileri
-    banli: k.banli || false,
-    banSebep: k.banSebep || null,
-    banTarihi: k.banTarihi || null,
-    cihazId: k.cihazId || null,
-  }));
-  res.json({ kullanicilar: liste, toplam: liste.length, online: liste.filter(k => k.online).length });
-});
-
-app.post('/isdemir/kullanicilar', (req, res) => {
-  const { sicil } = req.body;
-  const idx = kullanicilar.findIndex(k => k.sicil === sicil);
-  if (idx >= 0) {
-    kullanicilar[idx] = { ...kullanicilar[idx], ...req.body, guncelleme: new Date().toISOString() };
-  } else {
-    kullanicilar.push({ ...req.body, id: kullanicilar.length + 1 });
-  }
-  res.status(201).json({ ok: true });
-});
-
-app.delete('/isdemir/kullanicilar/:sicil', (req, res) => {
-  kullanicilar = kullanicilar.filter(k => k.sicil !== req.params.sicil);
-  res.json({ ok: true });
-});
-
-// ═══════════════════════════════════════════════════════
-// BAN SİSTEMİ API'LERİ
-// ═══════════════════════════════════════════════════════
-
-// 1. Ban Kontrolü - Mobil uygulama her açılışta çağırır
-app.get('/isdemir/ban-kontrol', (req, res) => {
+// ═══ GEMİLER (MONGODB) ═══
+app.get('/isdemir/ships', async (req, res) => {
   try {
-    const { sicil, cihazId } = req.query;
+    const gemiler = await db.collection('gemiler').find().toArray();
+    res.json({ gemiler });
+  } catch (error) {
+    console.error('Gemiler getirme hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
+  }
+});
+
+// ═══ KULLANICILAR (MONGODB) ═══
+app.get('/isdemir/kullanicilar', async (req, res) => {
+  try {
+    const kullanicilar = await db.collection('kullanicilar').find().toArray();
+    const liste = kullanicilar.map(k => ({
+      ...k,
+      online: onlineKullanicilar.has(k.sicil),
+      sonGiris: sonGorulenler.get(k.sicil) || null,
+      sonGirisStr: (() => {
+        const ts = sonGorulenler.get(k.sicil);
+        if (!ts) return 'Hiç giriş yapmadı';
+        const fark = Date.now() - ts;
+        const dk = Math.floor(fark / 60000);
+        const saat = Math.floor(fark / 3600000);
+        const gun = Math.floor(fark / 86400000);
+        if (dk < 1) return 'Az önce';
+        if (dk < 60) return `${dk} dk önce`;
+        if (saat < 24) return `${saat} saat önce`;
+        return `${gun} gün önce`;
+      })(),
+      banli: k.banli || false,
+      banSebep: k.banSebep || null,
+      banTarihi: k.banTarihi || null,
+      cihazId: k.cihazId || null,
+    }));
+    res.json({ kullanicilar: liste, toplam: liste.length, online: liste.filter(k => k.online).length });
+  } catch (error) {
+    console.error('Kullanıcılar getirme hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
+  }
+});
+
+app.post('/isdemir/kullanicilar', async (req, res) => {
+  try {
+    const { sicil } = req.body;
+    const existing = await db.collection('kullanicilar').findOne({ sicil });
     
-    if (!sicil) {
-      return res.json({ banli: false, sebep: '', banTarihi: '' });
+    if (existing) {
+      await db.collection('kullanicilar').updateOne(
+        { sicil },
+        { $set: { ...req.body, guncelleme: new Date().toISOString() } }
+      );
+    } else {
+      await db.collection('kullanicilar').insertOne({
+        ...req.body,
+        kayitTarihi: new Date().toISOString()
+      });
     }
+    
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error('Kullanıcı kayıt hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
+  }
+});
 
-    // Kullanıcıyı bul
-    const kullanici = kullanicilar.find(k => k.sicil === sicil);
+app.delete('/isdemir/kullanicilar/:sicil', async (req, res) => {
+  try {
+    await db.collection('kullanicilar').deleteOne({ sicil: req.params.sicil });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Kullanıcı silme hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
+  }
+});
 
-    if (!kullanici) {
-      return res.json({ banli: false, sebep: '', banTarihi: '' });
-    }
+// ═══ BAN SİSTEMİ ═══
+app.get('/isdemir/ban-kontrol', async (req, res) => {
+  try {
+    const { sicil } = req.query;
+    if (!sicil) return res.json({ banli: false, sebep: '', banTarihi: '' });
 
-    // Ban kontrolü
+    const kullanici = await db.collection('kullanicilar').findOne({ sicil });
+    if (!kullanici) return res.json({ banli: false, sebep: '', banTarihi: '' });
+
     if (kullanici.banli === true) {
       console.log(`🚫 Ban kontrol: ${sicil} BANLI - Sebep: ${kullanici.banSebep}`);
       return res.json({
@@ -275,407 +317,116 @@ app.get('/isdemir/ban-kontrol', (req, res) => {
       });
     }
 
-    // Ban yok
     console.log(`✓ Ban kontrol: ${sicil} temiz`);
     res.json({ banli: false, sebep: '', banTarihi: '' });
-    
   } catch (error) {
     console.error('Ban kontrol hatası:', error);
     res.json({ banli: false, sebep: '', banTarihi: '' });
   }
 });
 
-// 2. Kullanıcı Banlama - Admin panelden çağrılır
-app.post('/isdemir/kullanici-banla', (req, res) => {
+app.post('/isdemir/kullanici-banla', async (req, res) => {
   try {
     const { sicil, sebep, banTarihi } = req.body;
-    
     if (!sicil || !sebep) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Sicil ve sebep zorunlu' 
-      });
+      return res.status(400).json({ success: false, message: 'Sicil ve sebep zorunlu' });
     }
 
-    // Kullanıcıyı bul ve banla
-    const kullaniciIdx = kullanicilar.findIndex(k => k.sicil === sicil);
-    
-    if (kullaniciIdx !== -1) {
-      kullanicilar[kullaniciIdx].banli = true;
-      kullanicilar[kullaniciIdx].banSebep = sebep;
-      kullanicilar[kullaniciIdx].banTarihi = banTarihi || new Date().toISOString();
-      
-      console.log(`✅ KULLANICI BANLANDI: ${sicil} (${kullanicilar[kullaniciIdx].ad})`);
-      console.log(`   Sebep: ${sebep}`);
-      console.log(`   Tarih: ${kullanicilar[kullaniciIdx].banTarihi}`);
-      
-      // Eğer kullanıcı online ise bağlantısını kes
-      if (onlineKullanicilar.has(sicil)) {
-        const user = onlineKullanicilar.get(sicil);
-        if (user.ws && user.ws.readyState === WebSocket.OPEN) {
-          user.ws.send(JSON.stringify({ 
-            type: 'banlandınız', 
-            sebep: sebep 
-          }));
-          user.ws.close();
-        }
-        onlineKullanicilar.delete(sicil);
+    await db.collection('kullanicilar').updateOne(
+      { sicil },
+      { $set: {
+        banli: true,
+        banSebep: sebep,
+        banTarihi: banTarihi || new Date().toISOString()
+      }}
+    );
+
+    console.log(`✅ KULLANICI BANLANDI: ${sicil} - Sebep: ${sebep}`);
+
+    if (onlineKullanicilar.has(sicil)) {
+      const user = onlineKullanicilar.get(sicil);
+      if (user.ws && user.ws.readyState === WebSocket.OPEN) {
+        user.ws.send(JSON.stringify({ type: 'banlandınız', sebep: sebep }));
+        user.ws.close();
       }
+      onlineKullanicilar.delete(sicil);
     }
 
-    res.json({ 
-      success: true, 
-      message: 'Kullanıcı banlandı' 
-    });
-    
+    res.json({ success: true, message: 'Kullanıcı banlandı' });
   } catch (error) {
     console.error('Banlama hatası:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Banlama sırasında hata oluştu' 
-    });
+    res.status(500).json({ success: false, message: 'Banlama sırasında hata oluştu' });
   }
 });
 
-// 3. Ban Kaldırma - Admin panelden çağrılır
-app.post('/isdemir/ban-kaldir', (req, res) => {
+app.post('/isdemir/ban-kaldir', async (req, res) => {
   try {
     const { sicil } = req.body;
-    
     if (!sicil) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Sicil zorunlu' 
-      });
+      return res.status(400).json({ success: false, message: 'Sicil zorunlu' });
     }
 
-    // Kullanıcının banını kaldır
-    const kullaniciIdx = kullanicilar.findIndex(k => k.sicil === sicil);
-    
-    if (kullaniciIdx !== -1) {
-      kullanicilar[kullaniciIdx].banli = false;
-      kullanicilar[kullaniciIdx].banSebep = null;
-      kullanicilar[kullaniciIdx].banTarihi = null;
-      
-      console.log(`✅ BAN KALDIRILDI: ${sicil} (${kullanicilar[kullaniciIdx].ad})`);
-    }
+    await db.collection('kullanicilar').updateOne(
+      { sicil },
+      { $set: { banli: false, banSebep: null, banTarihi: null }}
+    );
 
-    res.json({ 
-      success: true, 
-      message: 'Ban kaldırıldı' 
-    });
-    
+    console.log(`✅ BAN KALDIRILDI: ${sicil}`);
+    res.json({ success: true, message: 'Ban kaldırıldı' });
   } catch (error) {
     console.error('Ban kaldırma hatası:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ban kaldırma sırasında hata oluştu' 
-    });
+    res.status(500).json({ success: false, message: 'Ban kaldırma sırasında hata oluştu' });
   }
 });
 
-// 4. Cihaz Kaydı - Mobil uygulama ilk kayıtta çağırır
-app.post('/isdemir/cihaz-kayit', (req, res) => {
+// ═══ DUYURULAR (MONGODB) ═══
+app.get('/isdemir/duyurular', async (req, res) => {
   try {
-    const { sicil, ad, gorev, cihazId, platform, kayitTarihi } = req.body;
-    
-    if (!sicil || !cihazId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Sicil ve cihazId zorunlu' 
-      });
-    }
-
-    // Kullanıcının cihaz bilgisini güncelle
-    const kullaniciIdx = kullanicilar.findIndex(k => k.sicil === sicil);
-    
-    if (kullaniciIdx !== -1) {
-      kullanicilar[kullaniciIdx].cihazId = cihazId;
-      kullanicilar[kullaniciIdx].platform = platform || 'unknown';
-      
-      console.log(`✅ Cihaz kaydedildi: ${sicil} - ${cihazId}`);
-    }
-
-    res.json({ 
-      success: true, 
-      message: 'Cihaz kaydedildi' 
-    });
-    
+    const duyurular = await db.collection('duyurular').find().sort({ tarih: -1 }).toArray();
+    res.json(duyurular);
   } catch (error) {
-    console.error('Cihaz kayıt hatası:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Cihaz kaydı sırasında hata oluştu' 
-    });
+    console.error('Duyurular getirme hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
   }
 });
-
-// ═══════════════════════════════════════════════════════
-// PUSH BİLDİRİM API'Sİ - Admin panelden çağrılır
-// ═══════════════════════════════════════════════════════
-app.post('/isdemir/push-bildirim', async (req, res) => {
-  try {
-    const { baslik, mesaj } = req.body;
-    
-    if (!baslik || !mesaj) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Başlık ve mesaj zorunlu' 
-      });
-    }
-
-    let gonderilen = 0;
-    
-    // Tüm kayıtlı FCM tokenlarına bildirim gönder
-    for (const [sicil, fcmToken] of fcmTokenlari) {
-      try {
-        await pushBildirimGonder(fcmToken, baslik, mesaj);
-        gonderilen++;
-        console.log(`📱 Push gönderildi: ${sicil}`);
-      } catch (e) {
-        console.error(`Push hatası (${sicil}):`, e.message);
-      }
-    }
-
-    console.log(`📢 TOPLU BİLDİRİM GÖNDERİLDİ:`);
-    console.log(`   Başlık: ${baslik}`);
-    console.log(`   Mesaj: ${mesaj}`);
-    console.log(`   Gönderilen: ${gonderilen} kullanıcı`);
-
-    res.json({ 
-      success: true, 
-      message: 'Bildirimler gönderildi',
-      gonderilen: gonderilen
-    });
-    
-  } catch (error) {
-    console.error('Push bildirim hatası:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Bildirim gönderme hatası' 
-    });
-  }
-});
-
-// ═══════════════════════════════════════════════════════
-
-let duyurular = [];
-let nextDuyuruId = 1;
-
-app.get('/isdemir/duyurular', (req, res) => res.json({ duyurular }));
 
 app.post('/isdemir/duyurular', async (req, res) => {
-  const d = { ...req.body, id: nextDuyuruId++, tarih: new Date().toISOString() };
-  duyurular.unshift(d); // en yenisi başa
-  if (duyurular.length > 50) duyurular = duyurular.slice(0, 50);
-  res.status(201).json(d);
-  // Tüm kullanıcılara push bildirim
-  for (const [sicil, token] of fcmTokenlari) {
-    if (!onlineKullanicilar.has(sicil)) {
-      await pushBildirimGonder(token, `📢 ${d.baslik}`, d.icerik?.substring(0, 80) || '');
-    }
+  try {
+    const duyuru = { ...req.body, tarih: new Date().toISOString() };
+    const result = await db.collection('duyurular').insertOne(duyuru);
+    
+    broadcast({ type: 'yeni_duyuru', duyuru: { ...duyuru, _id: result.insertedId }});
+    
+    res.json({ success: true, id: result.insertedId });
+  } catch (error) {
+    console.error('Duyuru ekleme hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
   }
-  // Çevrimiçilere WS ile bildir
-  broadcast({ type: 'yeni_duyuru', duyuru: d });
 });
 
-app.delete('/isdemir/duyurular/:id', (req, res) => {
-  duyurular = duyurular.filter(d => d.id !== parseInt(req.params.id));
-  broadcast({ type: 'duyuru_silindi' });
-  res.json({ ok: true });
+app.delete('/isdemir/duyurular/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('duyurular').deleteOne({ _id: new ObjectId(id) });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Duyuru silme hatası:', error);
+    res.status(500).json({ error: 'Veritabanı hatası' });
+  }
 });
 
-app.post('/isdemir/ships', async (req, res) => {
-  const g = { ...req.body, id: nextGemiId++ };
-  gemiler.push(g);
-  res.status(201).json(g);
-  await gemiEklendiBldirim(g.ad);
-});
-
-app.put('/isdemir/ships/:id', (req, res) => {
-  const idx = gemiler.findIndex(g => g.id === parseInt(req.params.id));
-  if (idx === -1) return res.status(404).json({ hata: 'Bulunamadı' });
-  gemiler[idx] = { ...gemiler[idx], ...req.body, id: gemiler[idx].id };
-  broadcast({ type: 'gemi_guncellendi', gemiler });
-  res.json(gemiler[idx]);
-});
-
-app.delete('/isdemir/ships/:id', (req, res) => {
-  gemiler = gemiler.filter(g => g.id !== parseInt(req.params.id));
-  broadcast({ type: 'gemi_guncellendi', gemiler });
-  res.json({ ok: true });
-});
-
-// Son görülme API
-app.get('/isdemir/son-gorulen/:sicil', (req, res) => {
-  const ts = sonGorulenler.get(req.params.sicil);
-  res.json({ sicil: req.params.sicil, timestamp: ts || null });
-});
-
-// Admin paneli
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
+// ─── SUNUCU BAŞLAT ──────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ İsdemir backend → http://localhost:${PORT}`);
-  console.log(`🚢 API    → /isdemir/ships`);
-  console.log(`💬 WS     → ws://localhost:${PORT}`);
-  console.log(`🔔 FCM    → Push bildirim aktif`);
-  console.log(`🖥️  Admin  → /admin`);
+  console.log(`🚀 Sunucu çalışıyor: http://localhost:${PORT}`);
 });
 
-// ─── AISStream ENTEGRASYONU ──────────────────────────
-const AIS_API_KEY = '80e2ab57d7c2da4cb75e73e310aded52e3e5a85d';
-
-// TEST: Tüm dünya - veri geliyor mu diye test
-const ISKENDERUN_BBOX = [[[-90, -180], [90, 180]]];
-
-// AIS'ten gelen gemileri sakla (MMSI bazlı)
-const aisGemiler = new Map(); // mmsi -> gemi bilgisi
-
-function aisGemiTipStr(tip) {
-  if (tip >= 70 && tip <= 79) return 'General Cargo';
-  if (tip >= 80 && tip <= 89) return 'Tanker';
-  if (tip >= 60 && tip <= 69) return 'Passenger';
-  if (tip === 30) return 'Fishing';
-  if (tip >= 40 && tip <= 49) return 'High Speed';
-  if (tip >= 20 && tip <= 29) return 'WIG';
-  return 'Bulk Carrier';
-}
-
-function aisNavStatusStr(status) {
-  switch (status) {
-    case 0: return 'Yüklemede';
-    case 1: return 'Demirledi';
-    case 3: return 'Kalkışa Hazır';
-    case 5: return 'Tahliyede';
-    default: return 'Geçiş';
-  }
-}
-
-let aisWs = null;
-let aisReconnectTimer = null;
-
-function aisStreamBaglan() {
-  if (aisWs) {
-    try { aisWs.terminate(); } catch(_) {}
-  }
-
-  console.log('🛰️  AISStream bağlanıyor...');
-
-  try {
-    aisWs = new WebSocket('wss://stream.aisstream.io/v0/stream');
-
-    aisWs.on('open', () => {
-      console.log('✅ AISStream bağlandı - subscription gönderiliyor...');
-      const subscription = {
-        APIKey: AIS_API_KEY,
-        BoundingBoxes: ISKENDERUN_BBOX,
-        FilterMessageTypes: ['PositionReport', 'ShipStaticData']
-      };
-      const msg = JSON.stringify(subscription);
-      console.log('📤 Subscription:', msg);
-      aisWs.send(msg);
-      console.log('✅ Subscription gönderildi');
-    });
-
-    aisWs.on('message', (data) => {
-      try {
-        const msg = JSON.parse(data.toString());
-        const msgType = msg.MessageType;
-        const meta = msg.MetaData;
-
-        // Debug log
-        console.log(`📡 AIS mesaj: ${msgType || 'bilinmiyor'} - ${meta?.ShipName || meta?.MMSI || 'isimsiz'}`);
-
-        if (!meta) return;
-
-        const mmsi = meta.MMSI?.toString();
-        if (!mmsi) return;
-
-        // Mevcut kaydı güncelle veya yeni oluştur
-        const mevcut = aisGemiler.get(mmsi) || {};
-
-        if (msgType === 'PositionReport') {
-          const pos = msg.Message?.PositionReport;
-          if (!pos) return;
-
-          aisGemiler.set(mmsi, {
-            ...mevcut,
-            mmsi,
-            ad: meta.ShipName?.trim() || mevcut.ad || `MMSI:${mmsi}`,
-            lat: pos.Latitude,
-            lon: pos.Longitude,
-            hiz: pos.Sog?.toFixed(1) || '0',
-            yon: pos.Cog?.toFixed(0) || '0',
-            navStatus: aisNavStatusStr(pos.NavigationalStatus),
-            draft: pos.Draught ? pos.Draught / 10 : (mevcut.draft || 0),
-            guncelleme: new Date().toISOString(),
-          });
-
-        } else if (msgType === 'ShipStaticData') {
-          const s = msg.Message?.ShipStaticData;
-          if (!s) return;
-
-          aisGemiler.set(mmsi, {
-            ...mevcut,
-            mmsi,
-            ad: s.Name?.trim() || mevcut.ad || `MMSI:${mmsi}`,
-            imo: s.ImoNumber ? `IMO${s.ImoNumber}` : (mevcut.imo || '-'),
-            tip: aisGemiTipStr(s.Type || 0),
-            bayrak: s.Flag || mevcut.bayrak || '-',
-            varisLiman: s.Destination?.trim() || mevcut.varisLiman || '-',
-            draft: s.MaximumStaticDraught ? s.MaximumStaticDraught / 10 : (mevcut.draft || 0),
-            uzunluk: s.Dimension?.A + s.Dimension?.B || 0,
-            genislik: s.Dimension?.C + s.Dimension?.D || 0,
-            guncelleme: new Date().toISOString(),
-          });
-        }
-
-        // AIS gemilerini tüm bağlı kullanıcılara yayınla (30 saniyede bir)
-      } catch (e) {
-        console.error('AIS mesaj parse hatası:', e.message);
-      }
-    });
-
-    aisWs.on('close', () => {
-      console.log('⚠️  AISStream bağlantısı kesildi, 10sn sonra tekrar...');
-      aisReconnectTimer = setTimeout(aisStreamBaglan, 10000);
-    });
-
-    aisWs.on('error', (err) => {
-      console.error('AISStream hata:', err.message);
-    });
-
-  } catch (e) {
-    console.error('AISStream bağlantı hatası:', e.message);
-    aisReconnectTimer = setTimeout(aisStreamBaglan, 10000);
-  }
-}
-
-// AIS verisi API endpoint
-app.get('/isdemir/ais', (req, res) => {
-  const list = Array.from(aisGemiler.values());
-  res.json({ gemiler: list, toplam: list.length });
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('📡 Sunucu kapatılıyor...');
+  await mongoClient.close();
+  server.close(() => {
+    console.log('✅ Sunucu kapatıldı');
+    process.exit(0);
+  });
 });
-
-// Belirli MMSI için AIS detay
-app.get('/isdemir/ais/:mmsi', (req, res) => {
-  const g = aisGemiler.get(req.params.mmsi);
-  if (!g) return res.status(404).json({ hata: 'Gemi bulunamadı' });
-  res.json(g);
-});
-
-// 30 saniyede bir AIS güncellemesini broadcast et
-setInterval(() => {
-  const list = Array.from(aisGemiler.values());
-  if (list.length > 0) {
-    broadcast({ type: 'ais_guncelleme', gemiler: list });
-  }
-}, 30000);
-
-// Başlat
-aisStreamBaglan();
-console.log('🛰️  AISStream servisi başlatıldı - İskenderun Körfezi izleniyor');
