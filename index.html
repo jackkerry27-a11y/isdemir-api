@@ -1,0 +1,1222 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İsdemir Liman Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --bg2: #0a1520;
+    --bg3: #0f1e2e;
+    --card: #0d1928;
+    --border: #1a3050;
+    --accent: #FF9F0A;
+    --accent2: #ff6b35;
+    --blue: #2196f3;
+    --green: #00e676;
+    --red: #ff1744;
+    --text: #e8f4ff;
+    --muted: #4a7090;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(255,159,10,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(33,150,243,0.04) 0%, transparent 50%);
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.1em;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* ── STATS ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.green { color: var(--green); }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* ── BTN ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #ffb733; transform: translateY(-1px); }
+
+  .btn-danger {
+    background: rgba(255,23,68,0.12);
+    color: var(--red);
+    border: 1px solid rgba(255,23,68,0.3);
+  }
+
+  .btn-danger:hover { background: rgba(255,23,68,0.22); }
+
+  .btn-edit {
+    background: rgba(33,150,243,0.12);
+    color: var(--blue);
+    border: 1px solid rgba(33,150,243,0.3);
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .btn-edit:hover { background: rgba(33,150,243,0.22); }
+
+  .btn-sm-danger {
+    background: rgba(255,23,68,0.12);
+    color: var(--red);
+    border: 1px solid rgba(255,23,68,0.3);
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .btn-sm-danger:hover { background: rgba(255,23,68,0.22); }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    background: var(--bg3);
+    padding: 12px 16px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,159,10,0.03); }
+
+  td {
+    padding: 13px 16px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  .ship-name {
+    font-weight: 600;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .badge-green { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+  .badge-orange { background: rgba(255,152,0,0.12); color: #ff9800; border: 1px solid rgba(255,152,0,0.3); }
+  .badge-blue { background: rgba(33,150,243,0.12); color: var(--blue); border: 1px solid rgba(33,150,243,0.3); }
+  .badge-red { background: rgba(255,23,68,0.12); color: var(--red); border: 1px solid rgba(255,23,68,0.3); }
+  .badge-gray { background: rgba(255,255,255,0.06); color: #aaa; border: 1px solid rgba(255,255,255,0.1); }
+
+  .draft-alarm {
+    color: var(--red);
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .actions { display: flex; gap: 8px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    width: 560px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.2s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  input, select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  select option { background: var(--bg3); }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--bg2);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    td:nth-child(3), td:nth-child(4), th:nth-child(3), th:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚓</div>
+    <div>
+      <div class="logo-text">İSDEMİR LİMAN OPS</div>
+      <div class="logo-sub">Admin Kontrol Paneli</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      CANLI
+    </div>
+    <button class="btn" style="background:rgba(255,152,0,0.1);border-color:rgba(255,152,0,0.3);color:#ff9800" onclick="openBildirimModal()">📢 Bildirim Gönder</button>
+    <button class="btn btn-primary" onclick="openModal()">+ Gemi Ekle</button>
+  </div>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Toplam Gemi</div>
+      <div class="stat-value" id="stat-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Limanda</div>
+      <div class="stat-value green" id="stat-limanda">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Beklenen</div>
+      <div class="stat-value blue" id="stat-beklenen">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Draft Alarm</div>
+      <div class="stat-value red" id="stat-alarm">0</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section-header">
+    <span class="section-title">Gemi Listesi</span>
+    <button class="btn btn-edit" onclick="loadGemiler()">↻ Yenile</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Gemi Adı</th>
+          <th>Durum</th>
+          <th>Rıhtım</th>
+          <th>Varış</th>
+          <th>Draft</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="gemi-tbody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DUYURU BÖLÜMÜ -->
+  <div class="section-header" style="margin-top:16px">
+    <span class="section-title">📢 Duyuru Panosu</span>
+    <button class="btn btn-primary" onclick="openDuyuruModal()">+ Duyuru Yayınla</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Başlık</th>
+          <th>Öncelik</th>
+          <th>İçerik</th>
+          <th>Yazar</th>
+          <th>Tarih</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="duyuru-tbody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- KULLANICILAR BÖLÜMÜ -->
+  <div class="section-header" style="margin-top:16px">
+    <span class="section-title">👥 Kayıtlı Kullanıcılar</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="online-badge" style="font-size:12px;color:#00e676;font-family:var(--mono)">● 0 online</span>
+      <button class="btn btn-primary" onclick="loadKullanicilar()">↻ Yenile</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Durum</th>
+          <th>Ad Soyad</th>
+          <th>Sicil No</th>
+          <th>Görev</th>
+          <th>İl / İlçe</th>
+          <th>Cihaz ID</th>
+          <th>Son Görülme</th>
+          <th>Kayıt Tarihi</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="kullanici-tbody">
+        <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- BİLDİRİM MODAL -->
+<div class="modal-overlay" id="bildirim-modal">
+  <div class="modal">
+    <div class="modal-title" style="color:#ff9800">📢 Push Bildirim Gönder</div>
+    <div style="background:rgba(255,152,0,0.05);border:1px solid rgba(255,152,0,0.2);border-radius:8px;padding:16px;margin-bottom:20px">
+      <div style="font-size:13px;color:var(--text)">
+        <strong>Tüm kullanıcılara</strong> telefon bildirimi gönderilecek!
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        Bildirim telefonların üst kısmında görünecek 📱
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Bildirim Başlığı <span style="color:#ff9800">*</span></label>
+        <input type="text" id="push-baslik" placeholder="Örn: Acil Duyuru" maxlength="50" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-size:14px;width:100%">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Maksimum 50 karakter</div>
+      </div>
+      <div class="form-group full">
+        <label>Bildirim Mesajı <span style="color:#ff9800">*</span></label>
+        <textarea id="push-mesaj" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:100px" placeholder="Örn: Yarın saat 14:00'de toplantı var, herkes katılsın!" maxlength="200"></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Maksimum 200 karakter</div>
+      </div>
+    </div>
+    
+    <!-- Önizleme -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📱 Bildirim Önizlemesi:</div>
+      <div style="background:var(--card);border-radius:8px;padding:12px;border-left:3px solid #ff9800">
+        <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px" id="preview-baslik">İSDEMİR OPS</div>
+        <div style="font-size:12px;color:var(--muted)" id="preview-mesaj">Bildirim mesajınız burada görünecek...</div>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeBildirimModal()">İptal</button>
+      <button class="btn" style="background:#ff9800;color:#000;padding:10px 24px;font-size:14px;font-weight:700" onclick="pushGonder()">📢 Gönder</button>
+    </div>
+  </div>
+</div>
+
+<!-- BAN MODAL -->
+<div class="modal-overlay" id="ban-modal">
+  <div class="modal">
+    <div class="modal-title" style="color:#ff1744">🚫 Kullanıcı Banla</div>
+    <div style="background:rgba(255,23,68,0.05);border:1px solid rgba(255,23,68,0.2);border-radius:8px;padding:16px;margin-bottom:20px">
+      <div style="font-size:14px;color:var(--text);margin-bottom:8px">
+        <strong id="ban-kullanici-ad"></strong> kullanıcısını banlamak üzeresiniz.
+      </div>
+      <div style="font-size:12px;color:var(--muted)">
+        Sicil: <span id="ban-kullanici-sicil" style="font-family:var(--mono);color:var(--accent)"></span>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Ban Sebebi <span style="color:#ff1744">*</span></label>
+        <textarea id="ban-sebep" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:80px" placeholder="Örn: Yetkisiz erişim tespit edildi"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeBanModal()">İptal</button>
+      <button class="btn btn-sm-danger" style="padding:10px 24px;font-size:14px" onclick="banKaydet()">🚫 Banla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="duyuru-modal">
+  <div class="modal">
+    <div class="modal-title">📢 Yeni Duyuru Yayınla</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Başlık</label>
+        <input type="text" id="d-baslik" placeholder="Duyuru başlığı...">
+      </div>
+      <div class="form-group full">
+        <label>İçerik</label>
+        <textarea id="d-icerik" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:100px" placeholder="Duyuru içeriği..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Öncelik</label>
+        <select id="d-oncelik">
+          <option value="normal">Normal 🟢</option>
+          <option value="onemli">Önemli 🟡</option>
+          <option value="kritik">Kritik 🔴</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Yazar</label>
+        <input type="text" id="d-yazar" placeholder="Admin">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDuyuruModal()">İptal</button>
+      <button class="btn btn-primary" onclick="saveDuyuru()">📢 Yayınla</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">🚢 Yeni Gemi Ekle</span>
+    </div>
+    <input type="hidden" id="edit-id">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Gemi Adı</label>
+        <input type="text" id="f-ad" placeholder="MV EXAMPLE">
+      </div>
+      <div class="form-group">
+        <label>IMO Numarası</label>
+        <input type="text" id="f-imo" placeholder="9123456">
+      </div>
+      <div class="form-group">
+        <label>Gemi Tipi</label>
+        <select id="f-tip">
+          <option>Bulk Carrier</option>
+          <option>Ore Carrier</option>
+          <option>General Cargo</option>
+          <option>Tanker</option>
+          <option>Container</option>
+          <option>Diğer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bayrak</label>
+        <input type="text" id="f-bayrak" placeholder="Panama">
+      </div>
+      <div class="form-group">
+        <label>Durum</label>
+        <select id="f-durum">
+          <option>Tahliyede</option>
+          <option>Yüklemede</option>
+          <option>Kalkışa Hazır</option>
+          <option>Bekleniyor</option>
+          <option>Demirledi</option>
+          <option>Geçiş</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Son Liman</label>
+        <input type="text" id="f-sonLiman" placeholder="Novorossiysk">
+      </div>
+      <div class="form-group">
+        <label>Varış Zamanı</label>
+        <input type="text" id="f-varisZamani" placeholder="09.04.2026 14:30">
+      </div>
+      <div class="form-group">
+        <label>Rıhtım</label>
+        <select id="f-rhtim">
+          <option>Rıhtım 1</option>
+          <option>Rıhtım 2</option>
+          <option>Rıhtım 3</option>
+          <option>Rıhtım 4</option>
+          <option>Rıhtım 5</option>
+          <option>Planlanıyor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Arrival Draft (m)</label>
+        <input type="number" id="f-draft" placeholder="13.4" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Departure Draft (m)</label>
+        <input type="number" id="f-departureDraft" placeholder="Boş bırakılabilir" step="0.1">
+      </div>
+      <div class="form-group full">
+        <label>Durum</label>
+        <select id="f-beklenen">
+          <option value="false">Limanda (Aktif)</option>
+          <option value="true">Bekleniyor (Gelecek)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">İptal</button>
+      <button class="btn btn-primary" onclick="saveGemi()">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/isdemir/ships';
+const ALARM_ESIK = 14.2;
+
+let gemilerData = [];
+
+async function loadGemiler() {
+  try {
+    const res = await fetch(API);
+    const data = await res.json();
+    gemilerData = data.gemiler || [];
+    renderTable();
+    renderStats();
+  } catch(e) {
+    showToast('Bağlantı hatası!', true);
+  }
+}
+
+function renderStats() {
+  document.getElementById('stat-total').textContent = gemilerData.length;
+  document.getElementById('stat-limanda').textContent = gemilerData.filter(g => !g.beklenen).length;
+  document.getElementById('stat-beklenen').textContent = gemilerData.filter(g => g.beklenen).length;
+  document.getElementById('stat-alarm').textContent = gemilerData.filter(g => draftAlarm(g)).length;
+}
+
+function draftAlarm(g) {
+  return g.draft >= ALARM_ESIK || (g.departureDraft && g.departureDraft >= ALARM_ESIK);
+}
+
+function durumBadge(durum, beklenen) {
+  if (beklenen) return `<span class="badge badge-blue">${durum}</span>`;
+  if (durum.includes('Yükle')) return `<span class="badge badge-green">${durum}</span>`;
+  if (durum.includes('Tahliye')) return `<span class="badge badge-orange">${durum}</span>`;
+  if (durum.includes('Hazır')) return `<span class="badge badge-gray">${durum}</span>`;
+  return `<span class="badge badge-gray">${durum}</span>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('gemi-tbody');
+  if (!gemilerData.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Henüz gemi eklenmedi</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = gemilerData.map(g => {
+    const alarm = draftAlarm(g);
+    const draftHtml = alarm
+      ? `<span class="draft-alarm">⚠️ ${g.draft}m</span>`
+      : `<span style="font-family:var(--mono);font-size:12px">${g.draft}m</span>`;
+
+    return `
+      <tr>
+        <td>
+          <div class="ship-name">${g.ad}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${g.imo} · ${g.bayrak}</div>
+        </td>
+        <td>${durumBadge(g.durum, g.beklenen)}</td>
+        <td style="font-family:var(--mono);font-size:12px">${g.rhtim}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">${g.varisZamani}</td>
+        <td>${draftHtml}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="editGemi(${g.id})">✏️ Düzenle</button>
+            <button class="btn btn-sm-danger" onclick="deleteGemi(${g.id})">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openModal(clear = true) {
+  if (clear) {
+    document.getElementById('modal-title-text').textContent = '🚢 Yeni Gemi Ekle';
+    document.getElementById('edit-id').value = '';
+    ['ad','imo','bayrak','sonLiman','varisZamani','draft','departureDraft'].forEach(f => {
+      document.getElementById('f-' + f).value = '';
+    });
+    document.getElementById('f-tip').value = 'Bulk Carrier';
+    document.getElementById('f-durum').value = 'Bekleniyor';
+    document.getElementById('f-rhtim').value = 'Planlanıyor';
+    document.getElementById('f-beklenen').value = 'false';
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function editGemi(id) {
+  const g = gemilerData.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('modal-title-text').textContent = '✏️ Gemi Düzenle';
+  document.getElementById('edit-id').value = g.id;
+  document.getElementById('f-ad').value = g.ad;
+  document.getElementById('f-imo').value = g.imo;
+  document.getElementById('f-tip').value = g.tip;
+  document.getElementById('f-bayrak').value = g.bayrak;
+  document.getElementById('f-durum').value = g.durum;
+  document.getElementById('f-sonLiman').value = g.sonLiman;
+  document.getElementById('f-varisZamani').value = g.varisZamani;
+  document.getElementById('f-rhtim').value = g.rhtim;
+  document.getElementById('f-draft').value = g.draft;
+  document.getElementById('f-departureDraft').value = g.departureDraft || '';
+  document.getElementById('f-beklenen').value = g.beklenen ? 'true' : 'false';
+  openModal(false);
+}
+
+async function saveGemi() {
+  const editId = document.getElementById('edit-id').value;
+  const depDraft = document.getElementById('f-departureDraft').value;
+
+  const payload = {
+    ad: document.getElementById('f-ad').value.trim(),
+    imo: document.getElementById('f-imo').value.trim(),
+    tip: document.getElementById('f-tip').value,
+    bayrak: document.getElementById('f-bayrak').value.trim(),
+    durum: document.getElementById('f-durum').value,
+    sonLiman: document.getElementById('f-sonLiman').value.trim(),
+    varisZamani: document.getElementById('f-varisZamani').value.trim(),
+    rhtim: document.getElementById('f-rhtim').value,
+    draft: parseFloat(document.getElementById('f-draft').value) || 0,
+    departureDraft: depDraft ? parseFloat(depDraft) : null,
+    beklenen: document.getElementById('f-beklenen').value === 'true',
+  };
+
+  if (!payload.ad || !payload.imo) {
+    showToast('Gemi adı ve IMO zorunlu!', true);
+    return;
+  }
+
+  try {
+    const url = editId ? `${API}/${editId}` : API;
+    const method = editId ? 'PUT' : 'POST';
+    await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    closeModal();
+    await loadGemiler();
+    showToast(editId ? '✅ Gemi güncellendi' : '✅ Gemi eklendi');
+  } catch(e) {
+    showToast('Kayıt hatası!', true);
+  }
+}
+
+async function deleteGemi(id) {
+  const g = gemilerData.find(x => x.id === id);
+  if (!confirm(`"${g?.ad}" gemisini silmek istediğinize emin misiniz?`)) return;
+  try {
+    await fetch(`${API}/${id}`, { method: 'DELETE' });
+    await loadGemiler();
+    showToast('🗑️ Gemi silindi');
+  } catch(e) {
+    showToast('Silme hatası!', true);
+  }
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// Dışarı tıklayınca modal kapat
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// İlk yükleme
+loadGemiler();
+loadDuyurular();
+loadKullanicilar();
+// Her 30 saniyede otomatik yenile
+setInterval(loadGemiler, 30000);
+setInterval(loadDuyurular, 30000);
+setInterval(loadKullanicilar, 30000);
+
+// ── KULLANICILAR ─────────────────────────────────────
+const KULLANICI_API = '/isdemir/kullanicilar';
+
+async function loadKullanicilar() {
+  try {
+    const res = await fetch(KULLANICI_API);
+    const data = await res.json();
+    renderKullanicilar(data.kullanicilar || []);
+  } catch(e) {}
+}
+
+function renderKullanicilar(liste) {
+  const tbody = document.getElementById('kullanici-tbody');
+  if (!liste.length) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px">Henüz kayıtlı kullanıcı yok</td></tr>`;
+    return;
+  }
+  const onlineCount = liste.filter(k => k.online).length;
+  const badge = document.getElementById('online-badge');
+  if (badge) badge.textContent = `● ${onlineCount} online`;
+
+  tbody.innerHTML = liste.map((k, i) => {
+    const tarih = k.kayitTarihi ? new Date(k.kayitTarihi).toLocaleDateString('tr-TR') : '-';
+    const banli = k.banli || false;
+    
+    // Durum badge'i
+    let durumBadge;
+    if (banli) {
+      durumBadge = `<span class="badge badge-red" style="font-size:10px">🚫 BANLI</span>`;
+    } else if (k.online) {
+      durumBadge = `<span class="badge badge-green" style="font-size:10px">● Çevrimiçi</span>`;
+    } else {
+      durumBadge = `<span class="badge badge-gray" style="font-size:10px;background:rgba(255,255,255,0.05);color:#666;border-color:#333">● Çevrimdışı</span>`;
+    }
+    
+    // Cihaz ID (kısa gösterim)
+    const cihazKisa = k.cihazId ? k.cihazId.substring(0, 12) + '...' : '-';
+    const cihazTitle = k.cihazId || 'Cihaz kaydı yok';
+    
+    // İşlem butonları
+    let islemButonlar;
+    if (banli) {
+      islemButonlar = `
+        <button class="btn btn-sm" style="background:rgba(0,230,118,0.1);border-color:rgba(0,230,118,0.3);color:#00e676;font-size:11px;padding:4px 10px" 
+                onclick="banKaldir('${k.sicil}', '${k.ad}')">
+          ✓ Ban Kaldır
+        </button>
+        <button class="btn btn-sm-danger" onclick="deleteKullanici('${k.sicil}')" style="margin-left:4px">🗑️</button>
+      `;
+    } else {
+      islemButonlar = `
+        <button class="btn btn-sm" style="background:rgba(255,23,68,0.1);border-color:rgba(255,23,68,0.3);color:#ff1744;font-size:11px;padding:4px 10px" 
+                onclick="banlaModal('${k.sicil}', '${k.ad}')">
+          🚫 Banla
+        </button>
+        <button class="btn btn-sm-danger" onclick="deleteKullanici('${k.sicil}')" style="margin-left:4px">🗑️</button>
+      `;
+    }
+    
+    return `<tr style="${banli ? 'background:rgba(255,23,68,0.03);border-left:3px solid #ff1744' : ''}">
+      <td style="color:var(--muted);font-size:12px">${i + 1}</td>
+      <td>${durumBadge}</td>
+      <td style="font-weight:600;color:${banli ? '#ff1744' : 'var(--accent)'}">${k.ad || '-'}</td>
+      <td style="font-family:var(--mono);font-size:12px">${k.sicil || '-'}</td>
+      <td style="font-size:12px">${k.gorev || '-'}</td>
+      <td style="font-size:12px;color:var(--muted)">${k.il || '-'} / ${k.ilce || '-'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:#4a7090" title="${cihazTitle}">${cihazKisa}</td>
+      <td style="font-size:11px;color:${k.online ? '#00e676' : 'var(--muted)'}">${k.sonGirisStr || '-'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${tarih}</td>
+      <td style="white-space:nowrap">${islemButonlar}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteKullanici(sicil) {
+  if (!confirm(`${sicil} sicilli kullanıcıyı silmek istiyor musunuz?`)) return;
+  try {
+    await fetch(`${KULLANICI_API}/${sicil}`, { method: 'DELETE' });
+    await loadKullanicilar();
+    showToast('🗑️ Kullanıcı silindi');
+  } catch(e) { showToast('Hata!', true); }
+}
+
+// ── DUYURU ──────────────────────────────────────────
+const DUYURU_API = '/isdemir/duyurular';
+let duyurularData = [];
+
+async function loadDuyurular() {
+  try {
+    const res = await fetch(DUYURU_API);
+    const data = await res.json();
+    duyurularData = data.duyurular || [];
+    renderDuyurular();
+  } catch(e) {}
+}
+
+function renderDuyurular() {
+  const tbody = document.getElementById('duyuru-tbody');
+  if (!duyurularData.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Henüz duyuru yok</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = duyurularData.map(d => {
+    const oncelikBadge = d.oncelik === 'kritik'
+      ? `<span class="badge badge-red">KRİTİK</span>`
+      : d.oncelik === 'onemli'
+      ? `<span class="badge badge-orange">ÖNEMLİ</span>`
+      : `<span class="badge badge-green">NORMAL</span>`;
+    const tarih = d.tarih ? new Date(d.tarih).toLocaleString('tr-TR') : '-';
+    const icerikKisa = d.icerik?.length > 60 ? d.icerik.substring(0, 60) + '...' : d.icerik;
+    return `<tr>
+      <td style="font-weight:600;color:var(--accent)">${d.baslik}</td>
+      <td>${oncelikBadge}</td>
+      <td style="font-size:12px;color:var(--muted)">${icerikKisa}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.yazar || 'Admin'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${tarih}</td>
+      <td><button class="btn btn-sm-danger" onclick="deleteDuyuru(${d.id})">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openDuyuruModal() {
+  document.getElementById('d-baslik').value = '';
+  document.getElementById('d-icerik').value = '';
+  document.getElementById('d-oncelik').value = 'normal';
+  document.getElementById('d-yazar').value = 'Admin';
+  document.getElementById('duyuru-modal').classList.add('open');
+}
+
+function closeDuyuruModal() {
+  document.getElementById('duyuru-modal').classList.remove('open');
+}
+
+async function saveDuyuru() {
+  const baslik = document.getElementById('d-baslik').value.trim();
+  const icerik = document.getElementById('d-icerik').value.trim();
+  if (!baslik || !icerik) { showToast('Başlık ve içerik zorunlu!', true); return; }
+  try {
+    await fetch(DUYURU_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        baslik,
+        icerik,
+        oncelik: document.getElementById('d-oncelik').value,
+        yazar: document.getElementById('d-yazar').value || 'Admin',
+      }),
+    });
+    closeDuyuruModal();
+    await loadDuyurular();
+    showToast('📢 Duyuru yayınlandı!');
+  } catch(e) { showToast('Hata!', true); }
+}
+
+async function deleteDuyuru(id) {
+  if (!confirm('Bu duyuruyu silmek istiyor musunuz?')) return;
+  try {
+    await fetch(`${DUYURU_API}/${id}`, { method: 'DELETE' });
+    await loadDuyurular();
+    showToast('🗑️ Duyuru silindi');
+  } catch(e) { showToast('Hata!', true); }
+}
+
+// ── BAN SİSTEMİ ──────────────────────────────────────
+let banSicil = '';
+let banAd = '';
+
+function banlaModal(sicil, ad) {
+  banSicil = sicil;
+  banAd = ad;
+  document.getElementById('ban-kullanici-ad').textContent = ad;
+  document.getElementById('ban-kullanici-sicil').textContent = sicil;
+  document.getElementById('ban-sebep').value = '';
+  document.getElementById('ban-modal').classList.add('open');
+}
+
+function closeBanModal() {
+  document.getElementById('ban-modal').classList.remove('open');
+  banSicil = '';
+  banAd = '';
+}
+
+async function banKaydet() {
+  const sebep = document.getElementById('ban-sebep').value.trim();
+  if (!sebep) {
+    showToast('Ban sebebi zorunlu!', true);
+    return;
+  }
+  
+  try {
+    await fetch('/isdemir/kullanici-banla', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sicil: banSicil,
+        sebep: sebep,
+        banTarihi: new Date().toISOString()
+      })
+    });
+    
+    closeBanModal();
+    await loadKullanicilar();
+    showToast(`🚫 ${banAd} banlandı!`);
+  } catch(e) {
+    showToast('Banlama sırasında hata oluştu!', true);
+  }
+}
+
+async function banKaldir(sicil, ad) {
+  if (!confirm(`${ad} kullanıcısının banını kaldırmak istiyor musunuz?`)) return;
+  
+  try {
+    await fetch('/isdemir/ban-kaldir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sicil: sicil })
+    });
+    
+    await loadKullanicilar();
+    showToast(`✓ ${ad} kullanıcısının banı kaldırıldı!`);
+  } catch(e) {
+    showToast('Ban kaldırma sırasında hata oluştu!', true);
+  }
+}
+
+document.getElementById('duyuru-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDuyuruModal();
+});
+
+document.getElementById('ban-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeBanModal();
+});
+
+// ── PUSH BİLDİRİM SİSTEMİ ───────────────────────────
+function openBildirimModal() {
+  document.getElementById('push-baslik').value = '';
+  document.getElementById('push-mesaj').value = '';
+  document.getElementById('preview-baslik').textContent = 'İSDEMİR OPS';
+  document.getElementById('preview-mesaj').textContent = 'Bildirim mesajınız burada görünecek...';
+  document.getElementById('bildirim-modal').classList.add('open');
+}
+
+function closeBildirimModal() {
+  document.getElementById('bildirim-modal').classList.remove('open');
+}
+
+// Canlı önizleme
+document.addEventListener('DOMContentLoaded', () => {
+  const baslikInput = document.getElementById('push-baslik');
+  const mesajInput = document.getElementById('push-mesaj');
+  const previewBaslik = document.getElementById('preview-baslik');
+  const previewMesaj = document.getElementById('preview-mesaj');
+  
+  if (baslikInput) {
+    baslikInput.addEventListener('input', (e) => {
+      previewBaslik.textContent = e.target.value || 'İSDEMİR OPS';
+    });
+  }
+  
+  if (mesajInput) {
+    mesajInput.addEventListener('input', (e) => {
+      previewMesaj.textContent = e.target.value || 'Bildirim mesajınız burada görünecek...';
+    });
+  }
+});
+
+async function pushGonder() {
+  const baslik = document.getElementById('push-baslik').value.trim();
+  const mesaj = document.getElementById('push-mesaj').value.trim();
+  
+  if (!baslik || !mesaj) {
+    showToast('Başlık ve mesaj zorunlu!', true);
+    return;
+  }
+  
+  if (!confirm(`Tüm kullanıcılara bildirim gönderilecek!\n\nBaşlık: ${baslik}\nMesaj: ${mesaj}\n\nOnaylıyor musunuz?`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch('/isdemir/push-bildirim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baslik, mesaj })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      closeBildirimModal();
+      showToast(`📢 ${data.gonderilen} kullanıcıya bildirim gönderildi!`);
+    } else {
+      showToast('Bildirim gönderilemedi!', true);
+    }
+  } catch (e) {
+    console.error('Push bildirim hatası:', e);
+    showToast('Bildirim gönderme hatası!', true);
+  }
+}
+
+document.getElementById('bildirim-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeBildirimModal();
+});
+
+document.getElementById('ban-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeBanModal();
+});
+</script>
+</body>
+</html>
