@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ═══════════════════════════════════════════════════════
 // MONGODB BAĞLANTISI
 // ═══════════════════════════════════════════════════════
-const MONGODB_URI = 'mongodb+srv://jackkerry27_db_user:veVLqCpft0yoibdw@isdemir-db.vmhwinj.mongodb.net/?appName=isdemir-db';
+const MONGODB_URI = 'mongodb+srv://jackkerry27_db_user:veVLqCpft0yoibdw@isdemir-db.vmhwinj.mongodb.net/isdemir?retryWrites=true&w=majority';
 const mongoClient = new MongoClient(MONGODB_URI);
 let db;
 
