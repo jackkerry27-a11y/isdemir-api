@@ -13,6 +13,22 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ═══════════════════════════════════════════════════════
+// CORS AYARLARI - CROSS-ORIGIN İSTEKLER İÇİN
+// ═══════════════════════════════════════════════════════
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Preflight requests için
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
+// ═══════════════════════════════════════════════════════
 // MONGODB BAĞLANTISI
 // ═══════════════════════════════════════════════════════
 const MONGODB_URI = 'mongodb+srv://jackkerry27_db_user:veVLqCpft0yoibdw@isdemir-db.vmhwinj.mongodb.net/isdemir?retryWrites=true&w=majority';
